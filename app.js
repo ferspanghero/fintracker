@@ -189,12 +189,49 @@ function addEventListeners() {
 
 // Handle import button click
 function handleImport() {
-    if (!fileInput.files.length) {
-        alert('Please select a file to import.');
+    const files = fileInput.files;
+    
+    if (!files.length) {
+        alert('Please select at least one file to import.');
         return;
     }
     
-    const file = fileInput.files[0];
+    // Disable import button during import
+    importBtn.disabled = true;
+    importBtn.textContent = 'Importing...';
+    
+    // Process files sequentially
+    processFiles(files, 0, 0);
+}
+
+// Process files sequentially
+function processFiles(files, index, totalImported) {
+    // If all files have been processed
+    if (index >= files.length) {
+        // Re-enable import button
+        importBtn.disabled = false;
+        importBtn.textContent = 'Import';
+        
+        if (totalImported > 0) {
+            // Save data
+            saveData();
+            
+            // Render transactions
+            renderTransactions();
+            
+            // Update summary
+            updateSummary();
+            
+            alert(`Successfully imported ${totalImported} transactions from ${files.length} file(s).`);
+        } else {
+            alert('No transactions were imported. Please check the file formats.');
+        }
+        
+        return;
+    }
+    
+    // Get current file
+    const file = files[index];
     const reader = new FileReader();
     
     reader.onload = function(e) {
@@ -202,28 +239,33 @@ function handleImport() {
         const fileType = fileTypeSelect.value;
         
         try {
+            // Update import button text to show progress
+            importBtn.textContent = `Importing (${index + 1}/${files.length})...`;
+            
             const importedTransactions = parseCSV(contents, fileType);
             
             if (importedTransactions.length > 0) {
                 // Add imported transactions to existing ones
                 transactions = [...transactions, ...importedTransactions];
                 
-                // Save data
-                saveData();
-                
-                // Render transactions
-                renderTransactions();
-                
-                // Update summary
-                updateSummary();
-                
-                alert(`Successfully imported ${importedTransactions.length} transactions.`);
+                // Process next file
+                processFiles(files, index + 1, totalImported + importedTransactions.length);
             } else {
-                alert('No transactions were imported. Please check the file format.');
+                console.warn(`No transactions imported from file: ${file.name}`);
+                // Process next file
+                processFiles(files, index + 1, totalImported);
             }
         } catch (error) {
-            alert(`Error importing file: ${error.message}`);
+            console.error(`Error importing file ${file.name}: ${error.message}`);
+            // Process next file
+            processFiles(files, index + 1, totalImported);
         }
+    };
+    
+    reader.onerror = function() {
+        console.error(`Error reading file ${file.name}`);
+        // Process next file
+        processFiles(files, index + 1, totalImported);
     };
     
     reader.readAsText(file);
