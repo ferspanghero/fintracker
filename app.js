@@ -292,6 +292,9 @@ function parseCSV(csvContent, fileType) {
             let transaction;
             
             switch (fileType) {
+                case 'fintracker':
+                    transaction = parseFinTrackerTransaction(line);
+                    break;
                 case 'amex':
                     transaction = parseAmexTransaction(line);
                     break;
@@ -324,11 +327,44 @@ function parseCSV(csvContent, fileType) {
     return importedTransactions;
 }
 
+// Parse FinTracker export format
+function parseFinTrackerTransaction(line) {
+    // Format: Date,Description,Amount,Type,Category,Account
+    const parts = parseCSVLine(line);
+    if (parts.length < 6) return null;
+    
+    const dateStr = parts[0];
+    const description = parts[1].replace(/^"|"$/g, '').replace(/""/g, '"'); // Remove quotes and handle escaped quotes
+    const amount = parseFloat(parts[2]);
+    const type = parts[3].toLowerCase();
+    const category = parts[4];
+    const account = parts[5];
+    
+    // Parse date (format: YYYY-MM-DD)
+    const date = parseDate(dateStr);
+    
+    // Add any new categories that don't exist yet
+    if (category && !categories[type].includes(category)) {
+        categories[type].push(category);
+    }
+    
+    return {
+        date,
+        description,
+        amount,
+        type,
+        category,
+        account
+    };
+}
+
 // Detect file type based on header row
 function detectFileType(headerRow) {
     headerRow = headerRow.toLowerCase();
     
-    if (headerRow.includes('date,date processed,description,amount')) {
+    if (headerRow.includes('date,description,amount,type,category,account')) {
+        return 'fintracker';
+    } else if (headerRow.includes('date,date processed,description,amount')) {
         return 'amex';
     } else if (headerRow.includes('description,type,card holder name,date,time,amount')) {
         return 'mastercard';
