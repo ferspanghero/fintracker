@@ -167,6 +167,13 @@ function addEventListeners() {
     // Category select in transaction form
     transactionCategorySelect.addEventListener('change', handleCategorySelectChange);
     
+    // Transaction type radio buttons
+    document.querySelectorAll('input[name="amount-type"]').forEach(radio => {
+        radio.addEventListener('change', () => {
+            populateTransactionCategorySelect();
+        });
+    });
+    
     // Close buttons for modals
     closeButtons.forEach(button => {
         button.addEventListener('click', () => {
@@ -596,7 +603,7 @@ function parseDate(dateStr) {
     }
     // Format: YYYY-MM-DD (e.g., 2025-02-26)
     else if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
-        date = new Date(dateStr);
+        date = dateStrInputToLocalDate(dateStr);
     }
     // Format: M/D/YYYY (e.g., 2/26/2025) - alternative format
     else if (dateStr.match(/^\d{1,2}\/\d{1,2}\/\d{2}$/)) {
@@ -638,6 +645,12 @@ function parseDate(dateStr) {
     }
     
     return date;
+}
+
+function dateStrInputToLocalDate(dateStrInput) {
+    // Format: YYYY-MM-DD (e.g., 2025-02-26)
+    const [year, month, day] = dateStrInput.split('-');
+    return new Date(year, month - 1, day); // Uses local time (month is zero-indexed)
 }
 
 // Categorize transaction based on description
@@ -735,8 +748,8 @@ function handleDateRangeChange() {
 
 // Apply custom date filter
 function applyCustomDateFilter() {
-    const startDate = startDateInput.value ? new Date(startDateInput.value) : null;
-    const endDate = endDateInput.value ? new Date(endDateInput.value) : null;
+    const startDate = startDateInput.value ? dateStrInputToLocalDate(startDateInput.value) : null;
+    const endDate = endDateInput.value ? dateStrInputToLocalDate(endDateInput.value) : null;
     
     if (startDate && endDate && startDate > endDate) {
         alert('Start date cannot be after end date.');
@@ -817,7 +830,7 @@ function handleAddTransaction(event) {
     event.preventDefault();
     
     // Get form values
-    const date = new Date(transactionDateInput.value);
+    const date = dateStrInputToLocalDate(transactionDateInput.value);
     const description = transactionDescriptionInput.value;
     const amount = parseFloat(transactionAmountInput.value);
     const type = document.querySelector('input[name="amount-type"]:checked').value;
