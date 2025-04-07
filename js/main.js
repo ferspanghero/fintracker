@@ -1,7 +1,7 @@
 // Global variables
 let transactions = [];
 let currentSort = { field: 'date', direction: 'desc' };
-let currentFilter = { dateRange: 'all', startDate: null, endDate: null, category: 'all' };
+let currentFilter = { dateRange: 'all', startDate: null, endDate: null, category: 'all', textFilter: '' };
 
 // Initialize the application
 function init() {

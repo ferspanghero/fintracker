@@ -28,3 +28,8 @@ const transactionAccountSelect = document.getElementById('transaction-account');
 const newCategoryGroup = document.getElementById('new-category-group');
 const newCategoryNameInput = document.getElementById('new-category-name');
 const closeButtons = document.querySelectorAll('.close');
+
+// New filter elements
+const textFilterInput = document.getElementById('text-filter');
+const deleteSelectedBtn = document.getElementById('delete-selected-btn');
+const selectAllCheckbox = document.getElementById('select-all-checkbox');

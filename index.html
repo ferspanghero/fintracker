@@ -59,6 +59,10 @@
                         <option value="all">All Categories</option>
                     </select>
                 </div>
+                <div class="text-filter">
+                    <label for="text-filter">Search:</label>
+                    <input type="text" id="text-filter" placeholder="Type to filter transactions...">
+                </div>
             </div>
             
             <div class="actions-section">
@@ -66,6 +70,7 @@
                 <button id="add-transaction-btn">Add Transaction</button>
                 <button id="export-csv-btn">Export to CSV</button>
                 <button id="clear-all-btn">Clear All</button>
+                <button id="delete-selected-btn">Delete Selected</button>
             </div>
         </div>
         
@@ -93,6 +98,7 @@
                 <table id="transactions-table">
                     <thead>
                         <tr>
+                            <th><input type="checkbox" id="select-all-checkbox"></th>
                             <th data-sort="date" class="sortable">Date <span class="sort-icon">▼</span></th>
                             <th data-sort="description" class="sortable">Description <span class="sort-icon"></span></th>
                             <th data-sort="amount" class="sortable">Amount <span class="sort-icon"></span></th>

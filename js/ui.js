@@ -24,6 +24,9 @@ function renderTransactions() {
         
         // Create cells
         row.innerHTML = `
+            <td>
+                <input type="checkbox" class="transaction-checkbox">
+            </td>
             <td class="editable" data-field="date">${dateFormatted}</td>
             <td class="editable" data-field="description">${transaction.description}</td>
             <td class="editable ${amountClass}" data-field="amount">${amountDisplay}</td>
@@ -39,6 +42,9 @@ function renderTransactions() {
         // Add row to table
         transactionsBody.appendChild(row);
     });
+    
+    // Reset select all checkbox
+    selectAllCheckbox.checked = false;
 }
 
 // Sort transactions

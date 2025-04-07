@@ -279,8 +279,54 @@ function getFilteredTransactions() {
             return false;
         }
         
+        // Apply text filter
+        if (currentFilter.textFilter) {
+            const searchText = currentFilter.textFilter.toLowerCase();
+            const matchesDescription = transaction.description.toLowerCase().includes(searchText);
+            const matchesCategory = transaction.category.toLowerCase().includes(searchText);
+            const matchesAccount = transaction.account.toLowerCase().includes(searchText);
+            
+            if (!(matchesDescription || matchesCategory || matchesAccount)) {
+                return false;
+            }
+        }
+        
         return true;
     });
+}
+
+// Delete selected transactions
+function deleteSelectedTransactions() {
+    const selectedRows = document.querySelectorAll('#transactions-body tr input[type="checkbox"]:checked');
+    
+    if (selectedRows.length === 0) {
+        alert('No transactions selected.');
+        return;
+    }
+    
+    if (confirm(`Are you sure you want to delete ${selectedRows.length} transaction(s)?`)) {
+        // Create an array of indices to remove
+        const indicesToRemove = Array.from(selectedRows).map(row => 
+            parseInt(row.closest('tr').getAttribute('data-index'), 10)
+        );
+        
+        // Sort indices in descending order to avoid index shifting
+        indicesToRemove.sort((a, b) => b - a);
+        
+        // Remove transactions
+        indicesToRemove.forEach(index => {
+            transactions.splice(index, 1);
+        });
+        
+        // Save data
+        saveData();
+        
+        // Render transactions
+        renderTransactions();
+        
+        // Update summary
+        updateSummary();
+    }
 }
 
 // Confirm clear all transactions

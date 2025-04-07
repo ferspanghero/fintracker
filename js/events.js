@@ -10,16 +10,32 @@ function addEventListeners() {
     // Category filter
     categorySelect.addEventListener('change', handleCategoryFilterChange);
     
+    // Text filter
+    textFilterInput.addEventListener('input', () => {
+        currentFilter.textFilter = textFilterInput.value;
+        renderTransactions();
+        updateSummary();
+    });
+    
     // Action buttons
     addTransactionBtn.addEventListener('click', openAddTransactionModal);
     exportCsvBtn.addEventListener('click', exportToCSV);
     clearAllBtn.addEventListener('click', confirmClearAll);
+    deleteSelectedBtn.addEventListener('click', deleteSelectedTransactions);
     
     // Table sorting
     document.querySelectorAll('th.sortable').forEach(th => {
         th.addEventListener('click', () => {
             const field = th.getAttribute('data-sort');
             handleSort(field);
+        });
+    });
+    
+    // Select all checkbox
+    selectAllCheckbox.addEventListener('change', (event) => {
+        const checkboxes = document.querySelectorAll('.transaction-checkbox');
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = event.target.checked;
         });
     });
     
