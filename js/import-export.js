@@ -73,27 +73,32 @@ function processFiles(files, index, totalImported) {
         }
     };
     
-    reader.onerror = function() {
-        console.error(`Error reading file ${file.name}`);
+    reader.onerror = function(event) {
+        console.error(`Error reading file ${file.name}:`, event.target.error);
+        alert(`Error reading file ${file.name}. Please check the file encoding and format.`);
         // Process next file
         processFiles(files, index + 1, totalImported);
     };
     
-    reader.readAsText(file);
+    // Try reading with UTF-8 encoding first, then fallback to Latin-1
+    reader.readAsText(file, 'UTF-8');
 }
 
 // Parse CSV file based on file type
 function parseCSV(csvContent, fileType) {
     const lines = csvContent.split('\n');
     const importedTransactions = [];
+    let actualFileType;
     
     // Auto-detect file type if set to auto
     if (fileType === 'auto') {
-        fileType = detectFileType(lines[0]);
+        actualFileType = detectFileType(lines[0]);
+    } else {
+        actualFileType = fileType;
     }
     
     // Skip header row for most file types
-    const startRow = (fileType === 'td') ? 0 : 1;
+    const startRow = (actualFileType === 'td') ? 0 : 1;
     
     for (let i = startRow; i < lines.length; i++) {
         const line = lines[i].trim();
@@ -102,7 +107,7 @@ function parseCSV(csvContent, fileType) {
         try {
             let transaction;
             
-            switch (fileType) {
+            switch (actualFileType) {
                 case 'fintracker':
                     transaction = parseFinTrackerTransaction(line);
                     break;
@@ -118,13 +123,11 @@ function parseCSV(csvContent, fileType) {
                 case 'td':
                     transaction = parseTDTransaction(line);
                     break;
-                case 'custom':
-                    // For custom format, we'd need more information from the user
-                    // This is a placeholder
-                    transaction = parseCustomTransaction(line);
+                case 'bradesco':
+                    transaction = parseBradescoTransaction(line);
                     break;
                 default:
-                    throw new Error('Unknown file type');
+                    throw new Error('Unknown file type: ' + actualFileType);
             }
             
             if (transaction) {
@@ -171,16 +174,18 @@ function parseFinTrackerTransaction(line) {
 
 // Detect file type based on header row
 function detectFileType(headerRow) {
-    headerRow = headerRow.toLowerCase();
+    headerRow = headerRow.toLowerCase().trim();
     
     if (headerRow.includes('date,description,amount,type,category,account')) {
         return 'fintracker';
     } else if (headerRow.includes('date,date processed,description,amount')) {
         return 'amex';
-    } else if (headerRow.includes('description,type,card holder name,date,time,amount')) {
+    } else if (headerRow.includes('"description","type","card holder name","date","time","amount"')) {
         return 'mastercard';
     } else if (headerRow.includes('date, transaction details, funds out, funds in')) {
         return 'simplii';
+    } else if (headerRow.includes('data;histórico;docto.;crédito (r$);débito (r$);saldo (r$)')) {
+        return 'bradesco';
     } else {
         // TD doesn't have headers, so this is a fallback
         return 'td';
@@ -324,21 +329,50 @@ function parseTDTransaction(line) {
     };
 }
 
-// Parse custom transaction format
-function parseCustomTransaction(line) {
-    // This is a placeholder for custom format parsing
-    // In a real application, we would need more information from the user
-    const parts = parseCSVLine(line);
+// Parse Bradesco bank statement
+function parseBradescoTransaction(line) {
+    // Remove BOM character if present
+    line = line.replace(/^\uFEFF/, '');
+
+    // Split by semicolon and trim each part
+    const parts = line.split(';').map(part => part.trim());
     
-    // Assuming format: Date,Description,Amount,Type
-    if (parts.length < 3) return null;
+    // Skip empty or metadata rows
+    if (parts.length < 6 || 
+        !parts[0] || 
+        parts[0].startsWith('Extrato') || 
+        parts[0].startsWith('Filtro') || 
+        parts[0].startsWith('Os dados') || 
+        parts[0].startsWith('Últimos') || 
+        parts[0].startsWith('Total')) {
+        return null;
+    }
+    
+    // Skip header row
+    if (parts[0].toLowerCase() === 'data') {
+        return null;
+    }
     
     const dateStr = parts[0];
     const description = parts[1];
-    const amount = parseFloat(parts[2]);
-    const type = parts[3] ? parts[3].toLowerCase() : (amount < 0 ? 'income' : 'expense');
     
-    // Parse date
+    // Parse credit and debit amounts (replace comma with dot for decimal)
+    const creditAmount = parts[3] ? parseFloat(parts[3].replace(',', '.')) : 0;
+    const debitAmount = parts[4] ? parseFloat(parts[4].replace(',', '.')) : 0;
+    
+    // Determine amount and type
+    let amount, type;
+    if (creditAmount > 0) {
+        amount = creditAmount;
+        type = 'income';
+    } else if (debitAmount > 0) {
+        amount = debitAmount;
+        type = 'expense';
+    } else {
+        return null;
+    }
+    
+    // Parse date (format: DD/MM/YYYY)
     const date = parseDate(dateStr);
     
     // Determine category based on description
@@ -347,10 +381,10 @@ function parseCustomTransaction(line) {
     return {
         date,
         description,
-        amount: Math.abs(amount),
+        amount,
         type,
         category,
-        account: 'Other'
+        account: 'Bradesco'
     };
 }
 
