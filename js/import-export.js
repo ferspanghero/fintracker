@@ -109,22 +109,22 @@ function parseCSV(csvContent, fileType) {
             
             switch (actualFileType) {
                 case 'fintracker':
-                    transaction = parseFinTrackerTransaction(line);
+                    transaction = parseFinTrackerTransaction(line, actualFileType);
                     break;
                 case 'amex':
-                    transaction = parseAmexTransaction(line);
+                    transaction = parseAmexTransaction(line, actualFileType);
                     break;
                 case 'mastercard':
-                    transaction = parseMastercardTransaction(line);
+                    transaction = parseMastercardTransaction(line, actualFileType);
                     break;
                 case 'simplii':
-                    transaction = parseSimpliiTransaction(line);
+                    transaction = parseSimpliiTransaction(line, actualFileType);
                     break;
                 case 'td':
-                    transaction = parseTDTransaction(line);
+                    transaction = parseTDTransaction(line, actualFileType);
                     break;
                 case 'bradesco':
-                    transaction = parseBradescoTransaction(line);
+                    transaction = parseBradescoTransaction(line, actualFileType);
                     break;
                 default:
                     throw new Error('Unknown file type: ' + actualFileType);
@@ -139,37 +139,6 @@ function parseCSV(csvContent, fileType) {
     }
     
     return importedTransactions;
-}
-
-// Parse FinTracker export format
-function parseFinTrackerTransaction(line) {
-    // Format: Date,Description,Amount,Type,Category,Account
-    const parts = parseCSVLine(line);
-    if (parts.length < 6) return null;
-    
-    const dateStr = parts[0];
-    const description = parts[1].replace(/^"|"$/g, '').replace(/""/g, '"'); // Remove quotes and handle escaped quotes
-    const amount = parseFloat(parts[2]);
-    const type = parts[3].toLowerCase();
-    const category = parts[4];
-    const account = parts[5];
-    
-    // Parse date (format: YYYY-MM-DD)
-    const date = parseDate(dateStr);
-    
-    // Add any new categories that don't exist yet
-    if (category && !categories[type].includes(category)) {
-        categories[type].push(category);
-    }
-    
-    return {
-        date,
-        description,
-        amount,
-        type,
-        category,
-        account
-    };
 }
 
 // Detect file type based on header row
@@ -192,8 +161,39 @@ function detectFileType(headerRow) {
     }
 }
 
+// Parse FinTracker export format
+function parseFinTrackerTransaction(line, fileType) {
+    // Format: Date,Description,Amount,Type,Category,Account
+    const parts = parseCSVLine(line);
+    if (parts.length < 6) return null;
+    
+    const dateStr = parts[0];
+    const description = parts[1].replace(/^"|"$/g, '').replace(/""/g, '"'); // Remove quotes and handle escaped quotes
+    const amount = parseFloat(parts[2]);
+    const type = parts[3].toLowerCase();
+    const category = parts[4];
+    const account = parts[5];
+    
+    // Parse date (format: YYYY-MM-DD)
+    const date = parseDate(dateStr, fileType);
+    
+    // Add any new categories that don't exist yet
+    if (category && !categories[type].includes(category)) {
+        categories[type].push(category);
+    }
+    
+    return {
+        date,
+        description,
+        amount,
+        type,
+        category,
+        account
+    };
+}
+
 // Parse American Express transaction
-function parseAmexTransaction(line) {
+function parseAmexTransaction(line, fileType) {
     // Format: Date,Date Processed,Description,Amount
     const parts = parseCSVLine(line);
     if (parts.length < 4) return null;
@@ -203,7 +203,7 @@ function parseAmexTransaction(line) {
     const amount = parseFloat(parts[3]);
     
     // Parse date (format: DD-MMM-YY)
-    const date = parseDate(dateStr);
+    const date = parseDate(dateStr, fileType);
     
     // Determine transaction type (negative amount = payment/income, positive = expense)
     const type = amount < 0 ? 'income' : 'expense';
@@ -222,7 +222,7 @@ function parseAmexTransaction(line) {
 }
 
 // Parse Mastercard transaction
-function parseMastercardTransaction(line) {
+function parseMastercardTransaction(line, fileType) {
     // Format: Description,Type,Card Holder Name,Date,Time,Amount
     const parts = parseCSVLine(line);
     if (parts.length < 6) return null;
@@ -234,7 +234,7 @@ function parseMastercardTransaction(line) {
     const amount = parseFloat(parts[5]);
     
     // Parse date (format: M/D/YYYY)
-    const date = parseDate(dateStr);
+    const date = parseDate(dateStr, fileType);
     
     // Determine transaction type (PAYMENT = income, PURCHASE = expense)
     const type = transactionType === 'PAYMENT' ? 'income' : 'expense';
@@ -253,7 +253,7 @@ function parseMastercardTransaction(line) {
 }
 
 // Parse Simplii transaction
-function parseSimpliiTransaction(line) {
+function parseSimpliiTransaction(line, fileType) {
     // Format: Date, Transaction Details, Funds Out, Funds In
     const parts = parseCSVLine(line);
     if (parts.length < 4) return null;
@@ -264,7 +264,7 @@ function parseSimpliiTransaction(line) {
     const fundsIn = parts[3].trim();
     
     // Parse date (format: M/D/YYYY)
-    const date = parseDate(dateStr);
+    const date = parseDate(dateStr, fileType);
     
     // Determine amount and type
     let amount, type;
@@ -290,7 +290,7 @@ function parseSimpliiTransaction(line) {
 }
 
 // Parse TD transaction
-function parseTDTransaction(line) {
+function parseTDTransaction(line, fileType) {
     // Format: Date,Description,Amount Out,Amount In,Balance
     const parts = parseCSVLine(line);
     if (parts.length < 3) return null;
@@ -314,7 +314,7 @@ function parseTDTransaction(line) {
     }
     
     // Parse date (format: M/D/YYYY)
-    const date = parseDate(dateStr);
+    const date = parseDate(dateStr, fileType);
     
     // Determine category based on description
     const category = categorizeTransaction(description, type);
@@ -330,7 +330,7 @@ function parseTDTransaction(line) {
 }
 
 // Parse Bradesco bank statement
-function parseBradescoTransaction(line) {
+function parseBradescoTransaction(line, fileType) {
     // Remove BOM character if present
     line = line.replace(/^\uFEFF/, '');
 
@@ -356,24 +356,24 @@ function parseBradescoTransaction(line) {
     const dateStr = parts[0];
     const description = parts[1];
     
-    // Parse credit and debit amounts (replace comma with dot for decimal)
-    const creditAmount = parts[3] ? parseFloat(parts[3].replace(',', '.')) : 0;
-    const debitAmount = parts[4] ? parseFloat(parts[4].replace(',', '.')) : 0;
+    // Parse credit and debit amounts (first eliminate dots, then replaces comma with dot for decimal)
+    const creditAmount = parts[3] ? parseFloat(parts[3].replace('.', '').replace(',', '.')) : 0;
+    const debitAmount = parts[4] ? parseFloat(parts[4].replace('.', '').replace(',', '.')) : 0;
     
     // Determine amount and type
     let amount, type;
     if (creditAmount > 0) {
-        amount = creditAmount;
+        amount = BRLtoCAD(creditAmount);
         type = 'income';
     } else if (debitAmount > 0) {
-        amount = debitAmount;
+        amount = BRLtoCAD(debitAmount);
         type = 'expense';
     } else {
         return null;
     }
-    
+
     // Parse date (format: DD/MM/YYYY)
-    const date = parseDate(dateStr);
+    const date = parseDate(dateStr, fileType);
     
     // Determine category based on description
     const category = categorizeTransaction(description, type);
