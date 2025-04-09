@@ -55,7 +55,7 @@ function handleAddTransaction(event) {
         description,
         amount,
         type,
-        category: category || (type === 'expense' ? 'Other Expenses' : 'Other Income'),
+        category: category || 'Outro',
         account
     };
     

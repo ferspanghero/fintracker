@@ -70,9 +70,8 @@ function categorizeTransaction(description, type) {
                 'medicine', 'healthcare', 'insurance'
             ],
             'Mercado': [
-                'mercado', 'grocery', 'market', 'supermarket', 'store', 
-                'shop', 'food', 'costco', 'safeway', 'walmart', 
-                'victoria hill market', 'persian baanou', 'canadian tire', 
+                'merc', 'grocery', 'market', 'supermarket', 'costco', 'safeway', 
+                'walmart', 'victoria hill market', 'persian baanou', 'canadian tire', 
                 'home depot', 'dollar tree', 'iga', 'best season produce',
                 'target', 'trader', 'whole foods', 'aldi', 'kroger', 'publix', 
                 'shoprite', 'farm'

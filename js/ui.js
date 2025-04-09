@@ -50,34 +50,39 @@ function renderTransactions() {
 // Sort transactions
 function sortTransactions(transactionsToSort) {
     return [...transactionsToSort].sort((a, b) => {
-        let valueA, valueB;
+        // Get values safely with defaults for each field
+        const field = currentSort.field;
+        const isAsc = currentSort.direction === 'asc';
         
-        // Get values based on field
-        switch (currentSort.field) {
-            case 'date':
-                valueA = a.date.getTime();
-                valueB = b.date.getTime();
-                break;
-            case 'amount':
-                valueA = a.amount;
-                valueB = b.amount;
-                break;
-            default:
-                valueA = a[currentSort.field];
-                valueB = b[currentSort.field];
-                
-                // Handle string comparison
-                if (typeof valueA === 'string' && typeof valueB === 'string') {
-                    return currentSort.direction === 'asc'
-                        ? valueA.localeCompare(valueB)
-                        : valueB.localeCompare(valueA);
-                }
+        // Handle different field types
+        if (field === 'date') {
+            const dateA = a.date?.getTime() || 0;
+            const dateB = b.date?.getTime() || 0;
+            return isAsc ? dateA - dateB : dateB - dateA;
         }
         
-        // Compare values
-        return currentSort.direction === 'asc'
-            ? valueA - valueB
-            : valueB - valueA;
+        if (field === 'amount') {
+            // Some amounts may be absolute, so need to treat them all equally
+            const amountA = (Math.abs(a.amount) ?? 0) * (a.type === 'expense' ? -1 : 1);
+            const amountB = (Math.abs(b.amount) ?? 0) * (b.type === 'expense' ? -1 : 1);
+
+            return isAsc ? amountA - amountB : amountB - amountA;
+        }
+        
+        if (field === 'category') {
+            const categoryA = a.category || '';
+            const categoryB = b.category || '';
+            return isAsc 
+                ? categoryA.localeCompare(categoryB, 'pt-BR') 
+                : categoryB.localeCompare(categoryA, 'pt-BR');
+        }
+        
+        // Default case for any other string fields
+        const strA = typeof a[field] === 'string' ? a[field] : '';
+        const strB = typeof b[field] === 'string' ? b[field] : '';
+        return isAsc 
+            ? strA.localeCompare(strB, 'en-US') 
+            : strB.localeCompare(strA, 'en-US');
     });
 }
 
