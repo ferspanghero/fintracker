@@ -1,29 +1,29 @@
 // Category-related constants and functions
 
-// Default categories
+// Default categories in Brazilian Portuguese
 const defaultCategories = {
     expense: [
-        'Food & Dining', 
-        'Groceries', 
-        'Transportation', 
-        'Housing', 
-        'Utilities', 
-        'Entertainment', 
-        'Shopping', 
-        'Travel', 
-        'Healthcare', 
-        'Personal Care',
-        'Education',
-        'Gifts & Donations',
-        'Fees & Charges'
+        'Casa', 
+        'Tarifa', 
+        'Dívida', 
+        'Saúde', 
+        'Mercado', 
+        'Telefone', 
+        'Alimentação', 
+        'Vestuário', 
+        'Outro', 
+        'Lazer', 
+        'Viagem', 
+        'Transporte', 
+        'Educação', 
+        'Internet', 
+        'Presente', 
+        'Curso', 
+        'Empréstimo'
     ],
     income: [
-        'Salary', 
-        'Freelance', 
-        'Investments', 
-        'Refunds', 
-        'Gifts', 
-        'Other Income'
+        'Trabalho',
+        'Outro'
     ]
 };
 
@@ -34,49 +34,157 @@ let categories = JSON.parse(JSON.stringify(defaultCategories));
 function categorizeTransaction(description, type) {
     description = description.toLowerCase();
     
-    // Define keywords for each category
+    // Define comprehensive keywords for each category
     const categoryKeywords = {
         expense: {
-            'Food & Dining': ['restaurant', 'cafe', 'coffee', 'food', 'dining', 'pizza', 'burger', 'sushi', 'meal', 'breakfast', 'lunch', 'dinner', 'bakery', 'bistro', 'grill', 'bar', 'pub'],
-            'Groceries': ['grocery', 'supermarket', 'market', 'food', 'safeway', 'walmart', 'costco', 'target', 'trader', 'whole foods', 'aldi', 'kroger', 'publix', 'shoprite', 'farm'],
-            'Transportation': ['gas', 'fuel', 'uber', 'lyft', 'taxi', 'cab', 'transit', 'train', 'subway', 'bus', 'parking', 'toll', 'car', 'auto', 'vehicle', 'rental', 'maintenance'],
-            'Housing': ['rent', 'mortgage', 'property', 'home', 'apartment', 'condo', 'house', 'real estate', 'housing', 'maintenance', 'repair', 'improvement', 'furniture', 'decor'],
-            'Utilities': ['electric', 'water', 'gas', 'power', 'energy', 'utility', 'internet', 'cable', 'phone', 'mobile', 'cell', 'bill', 'service', 'provider', 'shaw'],
-            'Entertainment': ['movie', 'theater', 'cinema', 'concert', 'show', 'event', 'ticket', 'netflix', 'spotify', 'music', 'game', 'subscription', 'streaming', 'entertainment'],
-            'Shopping': ['amazon', 'ebay', 'etsy', 'shop', 'store', 'retail', 'purchase', 'buy', 'mall', 'outlet', 'clothing', 'apparel', 'accessory', 'electronics', 'device', 'gadget'],
-            'Travel': ['hotel', 'motel', 'lodging', 'accommodation', 'airbnb', 'flight', 'airline', 'travel', 'trip', 'vacation', 'holiday', 'tour', 'cruise', 'resort', 'booking', 'expedia', 'localiza'],
-            'Healthcare': ['doctor', 'physician', 'medical', 'health', 'hospital', 'clinic', 'dental', 'dentist', 'vision', 'eye', 'pharmacy', 'drug', 'prescription', 'medicine', 'healthcare', 'insurance'],
-            'Personal Care': ['salon', 'spa', 'hair', 'beauty', 'cosmetic', 'makeup', 'skincare', 'grooming', 'barber', 'stylist', 'nail', 'massage', 'therapy', 'wellness', 'fitness', 'gym', 'workout'],
-            'Education': ['school', 'college', 'university', 'tuition', 'education', 'course', 'class', 'workshop', 'seminar', 'training', 'book', 'textbook', 'material', 'supply', 'student', 'loan'],
-            'Gifts & Donations': ['gift', 'present', 'donation', 'charity', 'nonprofit', 'contribute', 'support', 'fundraiser', 'cause', 'organization', 'foundation', 'give', 'donate'],
-            'Fees & Charges': ['fee', 'charge', 'service', 'membership', 'subscription', 'annual', 'monthly', 'interest', 'penalty', 'late', 'overdraft', 'atm', 'bank', 'financial', 'tax']
+            'Viagem': [
+                'viagem', 'travel', 'trip', 'vacation', 'journey', 
+                'hotel', 'flight', 'booking', 'airbnb', 'expedia', 
+                'cruise', 'aircanada', 'empreend', 'turi', 'pix',
+                'motel', 'lodging', 'accommodation', 'airline', 
+                'holiday', 'tour', 'resort', 'localiza', 'recife'
+            ],
+            'Casa': [
+                'casa', 'home', 'house', 'mortgage', 'rent', 'property', 
+                'strata', 'hydro', 'utility', 'shaw', 'insurance', 
+                'gallery', 'winners', 'handyman', 'apartment', 'condo', 
+                'real estate', 'housing', 'maintenance', 'repair', 'improvement', 
+                'furniture', 'decor'
+            ],
+            'Tarifa': [
+                'tarifa', 'fee', 'charge', 'service', 'membership', 
+                'adjusted cost base', 'bradesco prime', 'annual', 'monthly', 
+                'interest', 'penalty', 'late', 'overdraft', 'atm', 'bank', 
+                'financial', 'tax', 'subscription'
+            ],
+            'Dívida': [
+                'dívida', 'debt', 'payment', 'bill', 'insurance', 
+                'loan', 'credit', 'plano de saúde', 'student loan', 'mortgage'
+            ],
+            'Saúde': [
+                'saúde', 'health', 'medical', 'doctor', 'pharmacy', 
+                'clinic', 'therapy', 'wellness', 'enchante hair', 
+                'london drugs', 'shoppers', 'sally beauty', 
+                'exames', 'consulta', 'terapia', 'physician', 'hospital', 
+                'dental', 'dentist', 'vision', 'eye', 'drug', 'prescription', 
+                'medicine', 'healthcare', 'insurance'
+            ],
+            'Mercado': [
+                'mercado', 'grocery', 'market', 'supermarket', 'store', 
+                'shop', 'food', 'costco', 'safeway', 'walmart', 
+                'victoria hill market', 'persian baanou', 'canadian tire', 
+                'home depot', 'dollar tree', 'iga', 'best season produce',
+                'target', 'trader', 'whole foods', 'aldi', 'kroger', 'publix', 
+                'shoprite', 'farm'
+            ],
+            'Telefone': [
+                'telefone', 'phone', 'mobile', 'cellular', 
+                'communication', 'fido mobile', 'skype', 'cell', 
+                'provider', 'cable'
+            ],
+            'Alimentação': [
+                'alimentação', 'food', 'restaurant', 'cafe', 'dining', 
+                'meal', 'coffee', 'bar', 'bakery', 'starbucks', 
+                'uber eats', 'pho', 'sushi', 'pizza', 'brewery', 
+                'liquor', 'ramen', 'pub', 'restaurante', 'lanchonete',
+                'burger', 'breakfast', 'lunch', 'dinner', 'bistro', 'grill', 'eats'
+            ],
+            'Vestuário': [
+                'vestuário', 'clothing', 'clothes', 'fashion', 'wear', 
+                'apparel', 'dress', 'arcteryx', 'winners', 'gap', 
+                'diesel', 'jack & jones', 'old navy', 'renner', 
+                'sport chek', 'accessory', 'mall', 'outlet', 'retail'
+            ],
+            'Outro': [
+                'outro', 'other', 'miscellaneous', 'various', 
+                'unclassified', 'amazon', 'temu', 'apple store', 
+                'undetectable', 'airalo', 'varejopag', 'nagem',
+                'ebay', 'etsy', 'purchase', 'buy', 'electronics', 
+                'device', 'gadget', 'assorted', 'mixed', 'different'
+            ],
+            'Lazer': [
+                'lazer', 'leisure', 'entertainment', 'fun', 
+                'recreation', 'hobby', 'netflix', 'spotify', 
+                'cineplex', 'playstation', 'cirque du soleil', 
+                'obaticket', 'cinema', 'movie', 'theater', 'concert', 
+                'show', 'event', 'ticket', 'music', 'game', 
+                'subscription', 'streaming'
+            ],
+            'Transporte': [
+                'transporte', 'transport', 'travel', 'uber', 'taxi', 
+                'bus', 'train', 'parking', 'fuel', 'car', 'vehicle', 
+                'e-bike', 'parking', 'impark', 'brentwood parking', 
+                'lot', 'chv', 'lyft', 'gas', 'cab', 'transit', 
+                'subway', 'toll', 'auto', 'rental', 'maintenance'
+            ],
+            'Educação': [
+                'educação', 'education', 'school', 'course', 
+                'learning', 'study', 'training', 'student', 
+                'vancouver community college', 'criminal rec check',
+                'college', 'university', 'tuition', 'class', 'workshop', 
+                'seminar', 'book', 'textbook', 'material', 'supply'
+            ],
+            'Internet': [
+                'internet', 'online', 'web', 'network', 'wifi',
+                'cable', 'service provider', 'electric', 'water', 
+                'gas', 'power', 'energy', 'utility'
+            ],
+            'Presente': [
+                'presente', 'gift', 'donation', 'present', 'hallmark',
+                'charity', 'nonprofit', 'contribute', 'support', 
+                'fundraiser', 'cause', 'organization', 'foundation', 
+                'give', 'donate'
+            ],
+            'Curso': [
+                'curso', 'course', 'class', 'training', 'workshop',
+                'seminar', 'tuition', 'education', 'learning'
+            ],
+            'Empréstimo': [
+                'empréstimo', 'loan', 'credit', 'borrowing',
+                'debt', 'interest', 'mortgage', 'student loan'
+            ]
         },
         income: {
-            'Salary': ['salary', 'payroll', 'wage', 'income', 'earning', 'compensation', 'pay', 'direct deposit', 'employment', 'job', 'work', 'career', 'profession', 'occupation', 'amazon'],
-            'Freelance': ['freelance', 'contract', 'gig', 'project', 'client', 'customer', 'service', 'consulting', 'consultation', 'advisor', 'coach', 'mentor', 'tutor', 'instructor'],
-            'Investments': ['investment', 'dividend', 'interest', 'capital gain', 'stock', 'bond', 'fund', 'etf', 'mutual', 'security', 'portfolio', 'asset', 'equity', 'share', 'return'],
-            'Refunds': ['refund', 'return', 'reimbursement', 'cashback', 'rebate', 'credit', 'chargeback', 'adjustment', 'correction', 'reversal', 'repayment', 'settlement'],
-            'Gifts': ['gift', 'present', 'donation', 'contribution', 'support', 'assistance', 'aid', 'help', 'benefit', 'grant', 'scholarship', 'fellowship', 'stipend', 'allowance'],
-            'Other Income': ['other', 'miscellaneous', 'various', 'diverse', 'assorted', 'mixed', 'different', 'payment', 'received', 'thank you']
+            'Trabalho': [
+                'trabalho', 'work', 'salary', 'payroll', 'wage', 
+                'income', 'earning', 'job', 'amazon', 'reembolso', 
+                'salário', 'contribuição', 'compensation', 'pay', 
+                'direct deposit', 'employment', 'career', 'profession', 
+                'occupation'
+            ],
+            'Investimento': [
+                'invest', 'investment', 'dividend', 'interest', 
+                'capital gain', 'stock', 'bond', 'fund', 'etf', 
+                'mutual', 'security', 'portfolio', 'asset', 'equity', 
+                'share', 'return'
+            ],
+            'Outro': [
+                'outro', 'other', 'miscellaneous', 'diversos', 
+                'additional', 'extra', 'ajuste', 'various', 'diverse', 
+                'assorted', 'mixed', 'different', 'payment', 'received', 
+                'thank you', 'freelance', 'contract', 'gig', 'project', 
+                'client', 'customer', 'service', 'consulting', 'consultation', 
+                'advisor', 'coach', 'mentor', 'tutor', 'instructor', 'refund', 
+                'return', 'reimbursement', 'cashback', 'rebate', 'credit', 
+                'chargeback', 'adjustment', 'correction', 'reversal', 'repayment', 
+                'settlement', 'gift', 'present', 'donation', 'contribution', 
+                'support', 'assistance', 'aid', 'help', 'benefit', 'grant', 
+                'scholarship', 'fellowship', 'stipend', 'allowance'
+            ]
         }
     };
-    
-    // Check for payment keywords
-    if (description.includes('payment') && description.includes('thank you')) {
-        return 'Other Income';
-    }
     
     // Check for keywords in the appropriate type (expense or income)
     for (const [category, keywords] of Object.entries(categoryKeywords[type])) {
         for (const keyword of keywords) {
-            if (description.includes(keyword)) {
+            if (description.toLowerCase().includes(keyword.toLowerCase())) {
                 return category;
             }
         }
     }
     
     // Default categories if no match is found
-    return type === 'expense' ? 'Other Expenses' : 'Other Income';
+    return type === 'Outro';
 }
 
 // Populate category dropdowns

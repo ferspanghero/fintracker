@@ -8,10 +8,6 @@ function parseDate(dateStr, fileType) {
     let year;
 
     switch (fileType) {
-        case 'fintracker':
-            // Format: YYYY-MM-DD (e.g., 2025-02-26)
-            date = dateStrInputToLocalDate(dateStr);
-            break;
         case 'amex':
             // Format: DD-MMM-YY (e.g., 28-Feb-25)
             parts = dateStr.split('-');
@@ -26,10 +22,11 @@ function parseDate(dateStr, fileType) {
             
             date = new Date(year, months[month], day);
             break;
+        case 'fintracker':
         case 'mastercard':
         case 'simplii':
         case 'td':
-            // Format: MM or M/DD or D/YYYY (e.g., 2/5/2025, 02/05/2025)
+            // Format: M(M)/D(D)/YYYY (e.g., 2/5/2025, 02/05/2025)
             parts = dateStr.split('/');
             month = parseInt(parts[0], 10) - 1;
             day = parseInt(parts[1], 10);
@@ -91,5 +88,5 @@ function parseCSVLine(line) {
 }
 
 function BRLtoCAD(amount) {
-    return amount * 1;
+    return amount * 0.25;
 }

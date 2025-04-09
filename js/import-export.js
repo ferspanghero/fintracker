@@ -171,7 +171,7 @@ function parseFinTrackerTransaction(line, fileType) {
     const description = parts[1].replace(/^"|"$/g, '').replace(/""/g, '"'); // Remove quotes and handle escaped quotes
     const amount = parseFloat(parts[2]);
     const type = parts[3].toLowerCase();
-    const category = parts[4];
+    const category = parts[4] || categorizeTransaction(description, type);
     const account = parts[5];
     
     // Parse date (format: YYYY-MM-DD)
