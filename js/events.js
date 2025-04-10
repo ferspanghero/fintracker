@@ -65,9 +65,4 @@ function addEventListeners() {
             event.target.style.display = 'none';
         }
     });
-    
-    // Handle cell editing
-    transactionsBody.addEventListener('click', handleCellClick);
-    document.addEventListener('keydown', handleCellKeydown);
-    document.addEventListener('click', handleDocumentClick);
 }

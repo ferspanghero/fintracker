@@ -196,6 +196,29 @@ tr:hover {
     z-index: 1;
 }
 
+.category-edit-dropdown {
+    appearance: none;
+    background-color: transparent;
+    font-size: 1em;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    margin: 1px 5px 1px 5px;
+    width: 100%;
+    cursor: pointer;
+    transition: border-color 0.3s, background-color 0.3s;
+}
+
+.category-edit-dropdown:hover {
+    border-color: #2196F3;
+    background-color: #f0f0f0;
+}
+
+.category-edit-dropdown:focus {
+    outline: none;
+    border-color: #2196F3;
+    box-shadow: 0 0 5px rgba(33, 150, 243, 0.5);
+}
+
 .action-buttons {
     display: flex;
     gap: 5px;

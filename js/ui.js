@@ -30,7 +30,13 @@ function renderTransactions() {
             <td class="editable" data-field="date">${dateFormatted}</td>
             <td class="editable" data-field="description">${transaction.description}</td>
             <td class="editable ${amountClass}" data-field="amount">${amountDisplay}</td>
-            <td class="editable" data-field="category">${transaction.category || 'Uncategorized'}</td>
+            <td class="editable" data-field="category">
+                <select class="category-edit-dropdown">
+                    ${categories[transaction.type].map(category => 
+                        `<option value="${category}" ${category === (transaction.category || 'Sem Categoria') ? 'selected' : ''}>${category}</option>`
+                    ).join('')}
+                </select>
+            </td>
             <td class="editable" data-field="account">${transaction.account}</td>
             <td>
                 <div class="action-buttons">

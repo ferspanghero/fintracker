@@ -19,7 +19,8 @@ const defaultCategories = {
         'Internet', 
         'Presente', 
         'Curso', 
-        'Empréstimo'
+        'Empréstimo',
+        'Sem Categoria'
     ],
     income: [
         'Trabalho',
