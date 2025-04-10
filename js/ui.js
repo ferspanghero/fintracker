@@ -44,6 +44,10 @@ function renderTransactions() {
                 </div>
             </td>
         `;
+
+        row.querySelector('.category-edit-dropdown').addEventListener('change', (e) => {
+            updateTransactionField(transactions.indexOf(transaction), "category", e.target.value);
+        });
         
         // Add row to table
         transactionsBody.appendChild(row);
