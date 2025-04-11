@@ -154,11 +154,24 @@ th, td {
     padding: 12px 15px;
     text-align: left;
     border-bottom: 1px solid #ddd;
+    text-align: center;
 }
 
 th {
     background-color: #f2f2f2;
     font-weight: bold;
+}
+
+th:hover {
+    background-color: #dddddd;
+}
+
+td {
+    text-transform: capitalize;
+}
+
+.td-longtext {
+    text-align: left;
 }
 
 tr:hover {
@@ -206,6 +219,7 @@ tr:hover {
     width: 100%;
     cursor: pointer;
     transition: border-color 0.3s, background-color 0.3s;
+    text-align: center;
 }
 
 .category-edit-dropdown:hover {
@@ -226,6 +240,7 @@ tr:hover {
 
 .action-buttons button {
     padding: 5px 10px;
+    margin: 5px;
     width: auto;
 }
 

@@ -28,7 +28,7 @@ function renderTransactions() {
                 <input type="checkbox" class="transaction-checkbox">
             </td>
             <td class="editable" data-field="date">${dateFormatted}</td>
-            <td class="editable" data-field="description">${transaction.description}</td>
+            <td class="editable td-longtext" data-field="description">${transaction.description}</td>
             <td class="editable ${amountClass}" data-field="amount">${amountDisplay}</td>
             <td class="editable" data-field="category">
                 <select class="category-edit-dropdown">
@@ -38,6 +38,7 @@ function renderTransactions() {
                 </select>
             </td>
             <td class="editable" data-field="account">${transaction.account}</td>
+            <td class="editable" data-field="type">${transaction.type}</td>
             <td>
                 <div class="action-buttons">
                     <button class="delete-btn" onclick="deleteTransaction(${transactions.indexOf(transaction)})">Delete</button>
