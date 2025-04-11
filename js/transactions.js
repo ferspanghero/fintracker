@@ -77,17 +77,28 @@ function handleAddTransaction(event) {
 
 // Update transaction field
 function updateTransactionField(index, field, value) {
-    // Get transaction
-    const transaction = transactions[index];
+    const indices = new Set();
+
+    // Includes edited transaction
+    indices.add(index);
     
-    // Update field based on type
-    if (field === 'date') {
-        transaction.date = new Date(value);
-    } else if (field === 'amount') {
-        transaction.amount = parseFloat(value);
-    } else {
-        transaction[field] = value;
-    }
+    // If there are selected rows, update all of them with the selected value
+    const selectedRows = document.querySelectorAll('#transactions-body tr input[type="checkbox"]:checked');
+
+    Array.from(selectedRows).map(row => 
+        indices.add(parseInt(row.closest('tr').getAttribute('data-index'), 10))
+    );
+
+    // Update transactions
+    indices.forEach(i => {
+        if (field === 'date') {
+            transactions[i].date = new Date(value);
+        } else if (field === 'amount') {
+            transactions[i].amount = parseFloat(value);
+        } else {
+            transactions[i][field] = value;
+        }
+    });
     
     // Save data
     saveData();
