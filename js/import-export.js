@@ -416,6 +416,9 @@ function exportToCSV() {
 
 // Convert transactions to CSV format
 function convertTransactionsToCSV(transactionsToExport) {
+    // Add UTF-8 BOM
+    const BOM = '\uFEFF';
+        
     // Define CSV header
     const header = 'Date,Description,Amount,Type,Category,Account\n';
     
@@ -431,5 +434,5 @@ function convertTransactionsToCSV(transactionsToExport) {
         return `${date},${description},${amount},${type},${category},${account}`;
     }).join('\n');
     
-    return header + rows;
+    return BOM + header + rows;
 }

@@ -39,7 +39,8 @@ const categoryKeywords = {
             'hotel', 'flight', 'booking', 'airbnb', 'expedia', 
             'cruise', 'aircanada', 'empreend', 'turi', 'pix',
             'motel', 'lodging', 'accommodation', 'airline', 
-            'holiday', 'tour', 'resort', 'localiza', 'recife'
+            'holiday', 'tour', 'resort', 'localiza', 'recife',
+            'airalo'
         ],
         'Casa': [
             'home', 'house', 'mortgage', 'rent', 'property', 
@@ -49,10 +50,10 @@ const categoryKeywords = {
             'furniture', 'decor', 'parkside'
         ],
         'Tarifa': [
-            'tarifa', 'charge', 'service', 'membership', 
-            'adjusted cost base', 'bradesco prime', 'annual', 'monthly', 
-            'interest', 'penalty', 'late', 'overdraft', 'atm', 'bank', 
-            'financial', 'tax', 'subscription', 'doc/ted'
+            'tarifa', 'charge', 'membership', 'adjusted cost base', 
+            'bradesco prime', 'annual', 'monthly', 'interest', 'penalty', 
+            'late', 'overdraft', 'atm', 'bank', 'financial', 'tax',
+             'subscription', 'doc/ted'
         ],
         'Dívida': [
             'dívida', 'debt', 'payment', 'bill', 'insurance', 
