@@ -217,3 +217,7 @@ function confirmClearAll() {
         updateSummary();
     }
 }
+
+function getTransactionKey(transaction) {
+    return `${transaction.date.toISOString().split('T')[0]}-${transaction.description}-${transaction.amount}-${transaction.type}-${transaction.account}`;
+}

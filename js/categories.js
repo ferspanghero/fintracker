@@ -39,8 +39,7 @@ const categoryKeywords = {
             'hotel', 'flight', 'booking', 'airbnb', 'expedia', 
             'cruise', 'aircanada', 'empreend', 'turi', 'pix',
             'motel', 'lodging', 'accommodation', 'airline', 
-            'holiday', 'tour', 'resort', 'localiza', 'recife',
-            'airalo'
+            'holiday', 'tour', 'resort', 'localiza', 'airalo'
         ],
         'Casa': [
             'home', 'house', 'mortgage', 'rent', 'property', 
@@ -65,14 +64,15 @@ const categoryKeywords = {
             'london drugs', 'shoppers', 'sally beauty', 
             'exames', 'consulta', 'terapia', 'physician', 'hospital', 
             'dental', 'dentist', 'vision', 'eye', 'drug', 'prescription', 
-            'medicine', 'healthcare', 'insurance', 'drogaria', 'shopbeauty'
+            'medicine', 'healthcare', 'insurance', 'drogaria', 'shopbeauty',
+            'pharma', 'lifelabs', 'farmacia'
         ],
         'Mercado': [
             'merc', 'grocery', 'market', 'supermarket', 'costco', 'safeway', 
             'walmart', 'victoria hill market', 'persian baanou', 'canadian tire', 
             'home depot', 'dollar tree', 'iga', 'best season produce',
             'target', 'trader', 'whole foods', 'aldi', 'kroger', 'publix', 
-            'shoprite', 'farm', 'choices', 'elements brazil'
+            'shoprite', 'choices', 'elements brazil', 'dollar store'
         ],
         'Telefone': [
             'telefone', 'phone', 'mobile', 'cellular', 
@@ -82,16 +82,17 @@ const categoryKeywords = {
         'Alimentação': [
             'alimentação', 'food', 'restaurant', 'cafe', 'dining', 
             'meal', 'coffee', 'bar', 'bakery', 'starbucks', 
-            'uber eats', 'pho', 'sushi', 'pizza', 'brewery', 
+            'uber eats', 'pho', 'sushi', 'pizza', 'brewery', 'cuisine',
             'liquor', 'ramen', 'pub', 'restaurante', 'lanchonete',
             'burger', 'breakfast', 'lunch', 'dinner', 'bistro', 'grill', 'eats',
-            'sao braz', 'viet', 'cachacaria'
+            'sao braz', 'viet', 'cachacaria', 'winery', 'kitchen', 'keg', 'poke'
         ],
         'Vestuário': [
             'vestuário', 'clothing', 'clothes', 'fashion', 'wear', 
             'apparel', 'dress', 'arcteryx', 'winners', 'gap', 
             'diesel', 'jack & jones', 'old navy', 'renner', 'h&m',
-            'sport chek', 'accessory', 'mall', 'outlet', 'retail'
+            'sport chek', 'accessory', 'mall', 'outlet', 'retail',
+            'michaels'
         ],
         'Outro': [
             'outro', 'other', 'miscellaneous', 'various', 
@@ -113,7 +114,8 @@ const categoryKeywords = {
             'bus', 'train', 'parking', 'fuel', 'car', 'vehicle', 
             'e-bike', 'parking', 'impark', 'brentwood parking', 
             'lot', 'chv', 'lyft', 'gas', 'cab', 'transit', 
-            'subway', 'toll', 'auto', 'rental', 'maintenance', 'compass'
+            'subway', 'toll', 'auto', 'rental', 'maintenance', 'compass',
+            'indigo park', 'icbc'
         ],
         'Educação': [
             'educação', 'education', 'school', 'course', 

@@ -12,11 +12,11 @@ function handleImport() {
     importBtn.textContent = 'Importing...';
     
     // Process files sequentially
-    processFiles(files, 0, 0);
+    processFiles(files, 0, 0, 0);
 }
 
 // Process files sequentially
-function processFiles(files, index, totalImported) {
+function processFiles(files, index, totalImported, totalDuplicates) {
     // If all files have been processed
     if (index >= files.length) {
         // Re-enable import button
@@ -33,9 +33,9 @@ function processFiles(files, index, totalImported) {
             // Update summary
             updateSummary();
             
-            alert(`Successfully imported ${totalImported} transactions from ${files.length} file(s).`);
+            alert(`Successfully imported ${totalImported} transactions from ${files.length} file(s). ${totalDuplicates} duplicates were ignored.`);
         } else {
-            alert('No transactions were imported. Please check the file formats.');
+            alert(`No transactions were imported. ${totalDuplicates} duplicates were ignored.`);
         }
         
         return;
@@ -56,20 +56,33 @@ function processFiles(files, index, totalImported) {
             const importedTransactions = parseCSV(contents, fileType);
             
             if (importedTransactions.length > 0) {
-                // Add imported transactions to existing ones
-                transactions = [...transactions, ...importedTransactions];
+                const transactionKeys = new Set(transactions.map(getTransactionKey));
                 
+                importedTransactions.forEach(importedTransaction => {
+                    const importedTransactionKey = getTransactionKey(importedTransaction);
+
+                    // Check if this transaction has been seen before. Note we do not update transactionKeys because
+                    // a file may contain valid duplicates that should all be added. This should only prevent duplicates
+                    // in different files.
+                    if (!transactionKeys.has(importedTransactionKey)) {
+                        transactions.push(importedTransaction);
+                        totalImported++;
+                    } else {
+                        totalDuplicates++;
+                    }
+                });
+
                 // Process next file
-                processFiles(files, index + 1, totalImported + importedTransactions.length);
+                processFiles(files, index + 1, totalImported, totalDuplicates);
             } else {
                 console.warn(`No transactions imported from file: ${file.name}`);
                 // Process next file
-                processFiles(files, index + 1, totalImported);
+                processFiles(files, index + 1, totalImported, totalDuplicates);
             }
         } catch (error) {
             console.error(`Error importing file ${file.name}: ${error.message}`);
             // Process next file
-            processFiles(files, index + 1, totalImported);
+            processFiles(files, index + 1, totalImported, totalDuplicates);
         }
     };
     
@@ -391,10 +404,10 @@ function parseBradescoTransaction(line, fileType) {
 // Export to CSV
 function exportToCSV() {
     // Get filtered transactions
-    const filteredTransactions = getFilteredTransactions();
+    const sortedTransactions = sortTransactions(getFilteredTransactions());
     
     // Convert to CSV
-    const csvContent = convertTransactionsToCSV(filteredTransactions);
+    const csvContent = convertTransactionsToCSV(sortedTransactions);
     
     // Create download link
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -402,8 +415,11 @@ function exportToCSV() {
     const link = document.createElement('a');
     
     // Set link properties
+    const date = currentFilter.startDate ? currentFilter.startDate : new Date();
+    const year = date.getFullYear();
+    const month = date.toLocaleString('pt-BR', { month: 'short' }).replace('.', '');
     link.href = url;
-    link.download = `fintracker_export_${new Date().toISOString().split('T')[0]}.csv`;
+    link.download = `${year}_${month}_controle_de_gastos.csv`;
     
     // Trigger download
     document.body.appendChild(link);
