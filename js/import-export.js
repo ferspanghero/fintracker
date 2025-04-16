@@ -417,7 +417,7 @@ function exportToCSV() {
     // Set link properties
     const date = currentFilter.startDate ? currentFilter.startDate : new Date();
     const year = date.getFullYear();
-    const month = date.toLocaleString('pt-BR', { month: 'short' }).replace('.', '');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
     link.href = url;
     link.download = `${year}_${month}_controle_de_gastos.csv`;
     
@@ -436,7 +436,7 @@ function convertTransactionsToCSV(transactionsToExport) {
     const BOM = '\uFEFF';
         
     // Define CSV header
-    const header = 'Date,Description,Amount,Type,Category,Account\n';
+    const header = 'Date,Description,Category,Account,Amount,Type\n';
     
     // Convert each transaction to CSV row
     const rows = transactionsToExport.map(transaction => {
@@ -447,7 +447,7 @@ function convertTransactionsToCSV(transactionsToExport) {
         const category = transaction.category;
         const account = transaction.account;
         
-        return `${date},${description},${amount},${type},${category},${account}`;
+        return `${date},${description},${category},${account},${amount},${type}`;
     }).join('\n');
     
     return BOM + header + rows;
