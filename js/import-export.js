@@ -158,11 +158,11 @@ function parseCSV(csvContent, fileType) {
 function detectFileType(headerRow) {
     headerRow = headerRow.toLowerCase().trim();
     
-    if (headerRow.includes('date,description,amount,type,category,account')) {
+    if (headerRow.includes('date,description,category,account,amount,type')) {
         return 'fintracker';
     } else if (headerRow.includes('date,date processed,description,amount')) {
         return 'amex';
-    } else if (headerRow.includes('"description","type","card holder name","date","time","amount"')) {
+    } else if (headerRow.includes('description,type,card holder name,date,time,amount')) {
         return 'mastercard';
     } else if (headerRow.includes('date, transaction details, funds out, funds in')) {
         return 'simplii';

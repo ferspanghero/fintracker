@@ -85,7 +85,8 @@ const categoryKeywords = {
             'uber eats', 'pho', 'sushi', 'pizza', 'brewery', 'cuisine',
             'liquor', 'ramen', 'pub', 'restaurante', 'lanchonete',
             'burger', 'breakfast', 'lunch', 'dinner', 'bistro', 'grill', 'eats',
-            'sao braz', 'viet', 'cachacaria', 'winery', 'kitchen', 'keg', 'poke'
+            'sao braz', 'viet', 'cachacaria', 'winery', 'kitchen', 'keg', 'poke', 
+            'hortons', 'gastronomia', 'pie hole'
         ],
         'Vestuário': [
             'vestuário', 'clothing', 'clothes', 'fashion', 'wear', 
@@ -115,7 +116,7 @@ const categoryKeywords = {
             'e-bike', 'parking', 'impark', 'brentwood parking', 
             'lot', 'chv', 'lyft', 'gas', 'cab', 'transit', 
             'subway', 'toll', 'auto', 'rental', 'maintenance', 'compass',
-            'indigo park', 'icbc'
+            'indigo park', 'icbc', 'easypark'
         ],
         'Educação': [
             'educação', 'education', 'school', 'course', 

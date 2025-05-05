@@ -18,11 +18,11 @@ function parseDate(dateStr, fileType) {
             date = new Date(year, month, day);
             break;
         case 'amex':
-            // Format: DD-MMM-YY (e.g., 28-Feb-25)
-            parts = dateStr.split('-');
+            // Format: DD MMM YYYY (e.g., 28 Feb 2025)
+            parts = dateStr.split(' ');
             day = parseInt(parts[0], 10);
             month = parts[1];
-            year = 2000 + parseInt(parts[2], 10); // Assuming 20xx for year
+            year = parseInt(parts[2], 10); // Assuming 20xx for year
             
             const months = {
                 'Jan': 0, 'Feb': 1, 'Mar': 2, 'Apr': 3, 'May': 4, 'Jun': 5,
