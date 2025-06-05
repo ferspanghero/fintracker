@@ -72,7 +72,7 @@ const categoryKeywords = {
             'walmart', 'victoria hill market', 'persian baanou', 'canadian tire', 
             'home depot', 'dollar tree', 'iga', 'best season produce',
             'target', 'trader', 'whole foods', 'aldi', 'kroger', 'publix', 
-            'shoprite', 'choices', 'elements brazil', 'dollar store'
+            'shoprite', 'choices', 'elements brazil', 'dollar store', 'nutri haven'
         ],
         'Telefone': [
             'telefone', 'phone', 'mobile', 'cellular', 
@@ -86,7 +86,7 @@ const categoryKeywords = {
             'liquor', 'ramen', 'pub', 'restaurante', 'lanchonete',
             'burger', 'breakfast', 'lunch', 'dinner', 'bistro', 'grill', 'eats',
             'sao braz', 'viet', 'cachacaria', 'winery', 'kitchen', 'keg', 'poke', 
-            'hortons', 'gastronomia', 'pie hole'
+            'hortons', 'gastronomia', 'pie hole', 'beer', 'brewery'
         ],
         'Vestuário': [
             'vestuário', 'clothing', 'clothes', 'fashion', 'wear', 
