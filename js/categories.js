@@ -65,7 +65,7 @@ const categoryKeywords = {
             'exames', 'consulta', 'terapia', 'physician', 'hospital', 
             'dental', 'dentist', 'vision', 'eye', 'drug', 'prescription', 
             'medicine', 'healthcare', 'insurance', 'drogaria', 'shopbeauty',
-            'pharma', 'lifelabs', 'farmacia'
+            'pharma', 'lifelabs', 'farmacia', 'counseling'
         ],
         'Mercado': [
             'merc', 'grocery', 'market', 'supermarket', 'costco', 'safeway', 
