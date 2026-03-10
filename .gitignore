@@ -2,3 +2,5 @@
 *.xls
 *.xlsx
 *.vscode*
+node_modules/
+coverage/

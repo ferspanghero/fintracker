@@ -269,7 +269,7 @@ function handleCategorySelectChange() {
 // Handle category filter change
 function handleCategoryFilterChange() {
     currentFilter.category = categorySelect.value;
-    
+
     // Apply filters and update view
     renderTransactions();
     updateSummary();

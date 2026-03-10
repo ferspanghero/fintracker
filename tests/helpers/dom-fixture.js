@@ -1,0 +1,172 @@
+// Minimal HTML fixture extracted from index.html
+// Contains all element IDs needed for dom.js and DOM-dependent tests
+export const HTML_FIXTURE = `
+<div class="container">
+    <header>
+        <h1>FinTracker</h1>
+    </header>
+
+    <div class="controls">
+        <div class="import-section">
+            <h2>Import Data</h2>
+            <div class="file-input">
+                <label for="csv-file">Import CSV Files:</label>
+                <input type="file" id="csv-file" accept=".csv" multiple>
+                <button id="import-btn">Import</button>
+            </div>
+            <div class="file-type">
+                <label for="file-type">File Type:</label>
+                <select id="file-type">
+                    <option value="auto">Auto-detect</option>
+                    <option value="fintracker">FinTracker Export</option>
+                    <option value="amex">American Express</option>
+                    <option value="mastercard">Mastercard</option>
+                    <option value="simplii">Simplii</option>
+                    <option value="td">TD Bank</option>
+                    <option value="bradesco">Bradesco</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="filter-section">
+            <h2>Filter Data</h2>
+            <div class="date-filter">
+                <label for="date-range">Date Range:</label>
+                <select id="date-range">
+                    <option value="all">All Time</option>
+                    <option value="current-month">Current Month</option>
+                    <option value="last-month">Last Month</option>
+                    <option value="current-year">Current Year</option>
+                    <option value="custom">Custom Range</option>
+                </select>
+            </div>
+            <div class="custom-date-range" id="custom-date-container" style="display: none;">
+                <label for="start-date">From:</label>
+                <input type="date" id="start-date">
+                <label for="end-date">To:</label>
+                <input type="date" id="end-date">
+                <button id="apply-date-filter">Apply</button>
+            </div>
+            <div class="category-filter">
+                <label for="category-select">Category:</label>
+                <select id="category-select">
+                    <option value="all">All Categories</option>
+                </select>
+            </div>
+            <div class="text-filter">
+                <label for="text-filter">Search:</label>
+                <input type="text" id="text-filter" placeholder="Type to filter transactions...">
+            </div>
+        </div>
+
+        <div class="actions-section">
+            <h2>Actions</h2>
+            <button id="add-transaction-btn">Add Transaction</button>
+            <button id="export-csv-btn">Export to CSV</button>
+            <button id="clear-all-btn">Clear All</button>
+            <button id="delete-selected-btn">Delete Selected</button>
+        </div>
+    </div>
+
+    <div class="summary-section">
+        <h2>Summary</h2>
+        <div class="summary-cards">
+            <div class="summary-card income">
+                <h3>Total Income</h3>
+                <p id="total-income">$0.00</p>
+            </div>
+            <div class="summary-card expenses">
+                <h3>Total Expenses</h3>
+                <p id="total-expenses">$0.00</p>
+            </div>
+            <div class="summary-card net">
+                <h3>Net</h3>
+                <p id="net-amount">$0.00</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="transactions-section">
+        <h2>Transactions</h2>
+        <div class="table-container">
+            <table id="transactions-table">
+                <thead>
+                    <tr>
+                        <th><input type="checkbox" id="select-all-checkbox"></th>
+                        <th data-sort="date" class="sortable">Date <span class="sort-icon"></span></th>
+                        <th data-sort="description" class="sortable">Description <span class="sort-icon"></span></th>
+                        <th data-sort="amount" class="sortable">Amount <span class="sort-icon"></span></th>
+                        <th data-sort="category" class="sortable">Category <span class="sort-icon"></span></th>
+                        <th data-sort="account" class="sortable">Account <span class="sort-icon"></span></th>
+                        <th data-sort="type" class="sortable">Type <span class="sort-icon"></span></th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="transactions-body">
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Add Transaction Modal -->
+<div id="add-transaction-modal" class="modal">
+    <div class="modal-content">
+        <span class="close">&times;</span>
+        <h2>Add Transaction</h2>
+        <form id="transaction-form">
+            <div class="form-group">
+                <label for="transaction-date">Date:</label>
+                <input type="date" id="transaction-date" required>
+            </div>
+            <div class="form-group">
+                <label for="transaction-description">Description:</label>
+                <input type="text" id="transaction-description" required>
+            </div>
+            <div class="form-group">
+                <label for="transaction-amount">Amount:</label>
+                <input type="number" id="transaction-amount" step="0.01" required>
+                <div class="radio-group">
+                    <label>
+                        <input type="radio" name="amount-type" value="expense" checked> Expense
+                    </label>
+                    <label>
+                        <input type="radio" name="amount-type" value="income"> Income
+                    </label>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="transaction-category">Category:</label>
+                <select id="transaction-category">
+                    <option value="">-- Select Category --</option>
+                    <option value="new">+ Add New Category</option>
+                </select>
+            </div>
+            <div class="form-group" id="new-category-group" style="display: none;">
+                <label for="new-category-name">New Category Name:</label>
+                <input type="text" id="new-category-name">
+                <div class="radio-group">
+                    <label>
+                        <input type="radio" name="category-type" value="expense" checked> Expense Category
+                    </label>
+                    <label>
+                        <input type="radio" name="category-type" value="income"> Income Category
+                    </label>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="transaction-account">Account:</label>
+                <select id="transaction-account" required>
+                    <option value="Amex">Amex</option>
+                    <option value="Mastercard">Mastercard</option>
+                    <option value="Simplii">Simplii</option>
+                    <option value="TD">TD</option>
+                    <option value="Bradesco">Bradesco</option>
+                    <option value="RRSP Canada Life">RRSP Canada Life</option>
+                </select>
+            </div>
+            <button type="submit">Save Transaction</button>
+        </form>
+    </div>
+</div>
+`;
