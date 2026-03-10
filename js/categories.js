@@ -46,7 +46,7 @@ const categoryKeywords = {
             'strata', 'hydro', 'utility', 'shaw', 'insurance', 
             'gallery', 'winners', 'handyman', 'apartment', 'condo', 
             'real estate', 'housing', 'maintenance', 'repair', 'improvement', 
-            'furniture', 'decor', 'parkside'
+            'furniture', 'decor', 'parkside', 'rogers'
         ],
         'Tarifa': [
             'tarifa', 'charge', 'membership', 'adjusted cost base', 
@@ -86,14 +86,15 @@ const categoryKeywords = {
             'liquor', 'ramen', 'pub', 'restaurante', 'lanchonete',
             'burger', 'breakfast', 'lunch', 'dinner', 'bistro', 'grill', 'eats',
             'sao braz', 'viet', 'cachacaria', 'winery', 'kitchen', 'keg', 'poke', 
-            'hortons', 'gastronomia', 'pie hole', 'beer', 'brewery'
+            'hortons', 'gastronomia', 'pie hole', 'beer', 'brewery', 'caffe mira',
+            'brewing', 'ice cream', 'soccavo'
         ],
         'Vestuário': [
             'vestuário', 'clothing', 'clothes', 'fashion', 'wear', 
             'apparel', 'dress', 'arcteryx', 'winners', 'gap', 
             'diesel', 'jack & jones', 'old navy', 'renner', 'h&m',
             'sport chek', 'accessory', 'mall', 'outlet', 'retail',
-            'michaels'
+            'michaels', 'shoes'
         ],
         'Outro': [
             'outro', 'other', 'miscellaneous', 'various', 
