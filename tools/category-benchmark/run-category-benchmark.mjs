@@ -2,12 +2,12 @@
 
 // Category Match Benchmark
 // Compares categorizeTransaction output against ground-truth CSV.
-// Run: node category-benchmark/run-category-benchmark.mjs
+// Run: node tools/category-benchmark/run-category-benchmark.mjs
 
 import { readFileSync, writeFileSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { categorizeTransaction } from '../js/category-engine.js';
+import { categorizeTransaction } from '../../js/category-engine.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const CSV_PATH = resolve(__dirname, 'all_time_controle_de_gastos.csv');

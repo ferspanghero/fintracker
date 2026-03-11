@@ -1,9 +1,9 @@
 import { transactions, currentFilter } from './state.js';
 import { fileInput, fileTypeSelect, importBtn } from './dom.js';
-import { parseDate, parseCSVLine, BRLtoCAD } from './utils.js';
 import { categories, categorizeTransaction } from './categories.js';
 import { getFilteredTransactions, saveAndRefresh } from './transactions.js';
 import { sortTransactions } from './ui.js';
+import { getParserById, detectParser } from './parsers/index.js';
 
 export function getTransactionKey(transaction) {
     const dateStr = transaction.date ? transaction.date.toISOString().split('T')[0] : 'no-date';
@@ -108,56 +108,45 @@ export function processFiles(files, index, totalImported, totalDuplicates, total
     reader.readAsText(file, 'UTF-8');
 }
 
-// Parse CSV file based on file type
+// Parse CSV file using parser registry
 export function parseCSV(csvContent, fileType) {
     const lines = csvContent.split('\n');
     const importedTransactions = [];
     let errorCount = 0;
-    let actualFileType;
 
-    // Auto-detect file type if set to auto
+    // Resolve parser from registry
+    let parser;
     if (fileType === 'auto') {
-        actualFileType = detectFileType(lines[0]);
+        parser = detectParser(lines[0]);
     } else {
-        actualFileType = fileType;
+        parser = getParserById(fileType);
     }
 
-    // Skip header row for most file types
-    const startRow = (actualFileType === 'td') ? 0 : 1;
+    if (!parser) {
+        throw new Error('Unknown file type: ' + fileType);
+    }
+
+    const startRow = parser.hasHeader ? 1 : 0;
 
     for (let i = startRow; i < lines.length; i++) {
         const line = lines[i].trim();
         if (!line) continue;
 
         try {
-            let transaction;
+            const transaction = parser.parseLine(line);
+            if (!transaction) continue;
 
-            switch (actualFileType) {
-                case 'fintracker':
-                    transaction = parseFinTrackerTransaction(line, actualFileType);
-                    break;
-                case 'amex':
-                    transaction = parseAmexTransaction(line, actualFileType);
-                    break;
-                case 'mastercard':
-                    transaction = parseMastercardTransaction(line, actualFileType);
-                    break;
-                case 'simplii':
-                    transaction = parseSimpliiTransaction(line, actualFileType);
-                    break;
-                case 'td':
-                    transaction = parseTDTransaction(line, actualFileType);
-                    break;
-                case 'bradesco':
-                    transaction = parseBradescoTransaction(line, actualFileType);
-                    break;
-                default:
-                    throw new Error('Unknown file type: ' + actualFileType);
+            // Orchestrator-owned: categorization (only when parser didn't set one)
+            if (!transaction.category) {
+                transaction.category = categorizeTransaction(transaction.description, transaction.type);
             }
 
-            if (transaction) {
-                importedTransactions.push(transaction);
+            // Parser-specific post-processing (e.g., FinTracker's category side-effect)
+            if (parser.afterParse) {
+                parser.afterParse(transaction, { categories });
             }
+
+            importedTransactions.push(transaction);
         } catch (error) {
             console.error(`Error parsing line ${i + 1}: ${error.message}`);
             errorCount++;
@@ -167,257 +156,10 @@ export function parseCSV(csvContent, fileType) {
     return { transactions: importedTransactions, errorCount };
 }
 
-// Detect file type based on header row
+// Backward-compatible wrapper delegating to the parser registry
 export function detectFileType(headerRow) {
-    headerRow = headerRow.toLowerCase().trim();
-
-    if (headerRow.includes('date,description,category,account,amount,type')) {
-        return 'fintracker';
-    } else if (headerRow.includes('date,date processed,description,amount')) {
-        return 'amex';
-    } else if (headerRow.includes('description,type,card holder name,date,time,amount')) {
-        return 'mastercard';
-    } else if (headerRow.includes('date, transaction details, funds out, funds in')) {
-        return 'simplii';
-    } else if (headerRow.includes('data;histórico;docto.;crédito (r$);débito (r$);saldo (r$)')) {
-        return 'bradesco';
-    } else {
-        // TD doesn't have headers, so this is a fallback
-        return 'td';
-    }
-}
-
-// Parse FinTracker export format
-export function parseFinTrackerTransaction(line, fileType) {
-    // Format: Date,Description,Category,Account,Amount,Type
-    const parts = parseCSVLine(line);
-    if (parts.length < 6) return null;
-
-    const dateStr = parts[0];
-    const description = parts[1];
-    const type = parts[5].toLowerCase();
-    const category = parts[2] || categorizeTransaction(description, type);
-    const account = parts[3];
-    const amount = parseFloat(parts[4]);
-
-    // Parse date (format: YYYY-MM-DD)
-    const date = parseDate(dateStr, fileType);
-    if (!date) return null;
-
-    // Side effect: adds imported categories to the global categories list so re-imports preserve custom categories
-    if (category && !categories[type].includes(category)) {
-        categories[type].push(category);
-    }
-
-    return {
-        date,
-        description,
-        amount,
-        type,
-        category,
-        account
-    };
-}
-
-// Parse American Express transaction
-export function parseAmexTransaction(line, fileType) {
-    // Format: Date,Date Processed,Description,Amount
-    const parts = parseCSVLine(line);
-    if (parts.length < 4) return null;
-
-    const dateStr = parts[0];
-    const description = parts[2];
-    const amount = parseFloat(parts[3]);
-
-    // Parse date (format: DD-MMM-YY)
-    const date = parseDate(dateStr, fileType);
-    if (!date) return null;
-
-    // Determine transaction type (negative amount = payment/income, positive = expense)
-    const type = amount < 0 ? 'income' : 'expense';
-
-    // Determine category based on description
-    const category = categorizeTransaction(description, type);
-
-    return {
-        date,
-        description,
-        amount: Math.abs(amount),
-        type,
-        category,
-        account: 'Amex'
-    };
-}
-
-// Parse Mastercard transaction
-export function parseMastercardTransaction(line, fileType) {
-    // Format: Description,Type,Card Holder Name,Date,Time,Amount
-    const parts = parseCSVLine(line);
-    if (parts.length < 6) return null;
-
-    const description = parts[0];
-    const transactionType = parts[1];
-    const cardHolder = parts[2];
-    const dateStr = parts[3];
-    const amount = parseFloat(parts[5]);
-
-    // Parse date (format: M/D/YYYY)
-    const date = parseDate(dateStr, fileType);
-    if (!date) return null;
-
-    // Determine transaction type (PAYMENT = income, PURCHASE = expense)
-    const type = transactionType === 'PAYMENT' ? 'income' : 'expense';
-
-    // Determine category based on description
-    const category = categorizeTransaction(description, type);
-
-    return {
-        date,
-        description: `${description} (${cardHolder})`,
-        amount: Math.abs(amount),
-        type,
-        category,
-        account: 'Mastercard'
-    };
-}
-
-// Parse Simplii transaction
-export function parseSimpliiTransaction(line, fileType) {
-    // Format: Date, Transaction Details, Funds Out, Funds In
-    const parts = parseCSVLine(line);
-    if (parts.length < 4) return null;
-
-    const dateStr = parts[0].trim();
-    const description = parts[1].trim();
-    const fundsOut = parts[2].trim();
-    const fundsIn = parts[3].trim();
-
-    // Parse date (format: M/D/YYYY)
-    const date = parseDate(dateStr, fileType);
-    if (!date) return null;
-
-    // Determine amount and type
-    let amount, type;
-    if (fundsIn && parseFloat(fundsIn) > 0) {
-        amount = parseFloat(fundsIn);
-        type = 'income';
-    } else {
-        amount = parseFloat(fundsOut);
-        type = 'expense';
-    }
-
-    // Determine category based on description
-    const category = categorizeTransaction(description, type);
-
-    return {
-        date,
-        description,
-        amount,
-        type,
-        category,
-        account: 'Simplii'
-    };
-}
-
-// Parse TD transaction
-export function parseTDTransaction(line, fileType) {
-    // Format: Date,Description,Amount Out,Amount In,Balance
-    const parts = parseCSVLine(line);
-    if (parts.length < 3) return null;
-
-    const dateStr = parts[0];
-    const description = parts[1];
-
-    // TD format has separate columns for money out and in
-    // If amount out is present, it's an expense
-    // If amount in is present, it's income
-    let amount, type;
-    if (parts[2] && parseFloat(parts[2]) > 0) {
-        amount = parseFloat(parts[2]);
-        type = 'expense';
-    } else if (parts[3] && parseFloat(parts[3]) > 0) {
-        amount = parseFloat(parts[3]);
-        type = 'income';
-    } else {
-        // Skip if no amount
-        return null;
-    }
-
-    // Parse date (format: M/D/YYYY)
-    const date = parseDate(dateStr, fileType);
-    if (!date) return null;
-
-    // Determine category based on description
-    const category = categorizeTransaction(description, type);
-
-    return {
-        date,
-        description,
-        amount,
-        type,
-        category,
-        account: 'TD'
-    };
-}
-
-// Parse Bradesco bank statement
-export function parseBradescoTransaction(line, fileType) {
-    // Remove BOM character if present
-    line = line.replace(/^\uFEFF/, '');
-
-    // Split by semicolon and trim each part
-    const parts = line.split(';').map(part => part.trim());
-
-    // Skip empty or metadata rows
-    if (parts.length < 6 ||
-        !parts[0] ||
-        parts[0].startsWith('Extrato') ||
-        parts[0].startsWith('Filtro') ||
-        parts[0].startsWith('Os dados') ||
-        parts[0].startsWith('Últimos') ||
-        parts[0].startsWith('Total')) {
-        return null;
-    }
-
-    // Skip header row
-    if (parts[0].toLowerCase() === 'data') {
-        return null;
-    }
-
-    const dateStr = parts[0];
-    const description = parts[1];
-
-    // Parse credit and debit amounts (first eliminate all thousand-separator dots, then replace comma with dot for decimal)
-    const creditAmount = parts[3] ? parseFloat(parts[3].replace(/\./g, '').replace(',', '.')) : 0;
-    const debitAmount = parts[4] ? parseFloat(parts[4].replace(/\./g, '').replace(',', '.')) : 0;
-
-    // Determine amount and type
-    let amount, type;
-    if (creditAmount > 0) {
-        amount = BRLtoCAD(creditAmount);
-        type = 'income';
-    } else if (debitAmount > 0) {
-        amount = BRLtoCAD(debitAmount);
-        type = 'expense';
-    } else {
-        return null;
-    }
-
-    // Parse date (format: DD/MM/YYYY)
-    const date = parseDate(dateStr, fileType);
-    if (!date) return null;
-
-    // Determine category based on description
-    const category = categorizeTransaction(description, type);
-
-    return {
-        date,
-        description,
-        amount,
-        type,
-        category,
-        account: 'Bradesco'
-    };
+    const parser = detectParser(headerRow);
+    return parser ? parser.id : 'td';
 }
 
 // Export to CSV
