@@ -26,11 +26,16 @@ Personal finance tracker that imports bank CSVs, auto-categorizes transactions, 
 
 ## Tech Stack
 
-Vanilla JavaScript, HTML, and CSS — no frameworks, no build step, no runtime dependencies.
+Vanilla JavaScript (ES modules), HTML, and CSS — no frameworks, no build step, no runtime dependencies.
 
 ## Running
 
-Open `index.html` in a browser. That's it.
+```bash
+npm install   # first time only
+npx serve . -l 3000
+```
+
+Open http://localhost:3000. Data persists in localStorage across sessions.
 
 ## Tests
 
@@ -48,23 +53,26 @@ npm run test:watch    # run in watch mode
 npm run test:coverage # run with coverage report
 ```
 
-225 tests across 8 test files. Coverage thresholds: 90% statements/lines/functions, 85% branches.
+## Category Match Benchmark
 
-### Test structure
+Compares the auto-categorization engine against a ground-truth CSV of manually categorized transactions. Reports match rate, mismatches (with triggering keywords), and uncategorized entries.
+
+```bash
+node category-benchmark/run-category-benchmark.mjs [suffix]
+```
+
+Outputs a summary to the console and writes timestamped results to `category-benchmark/`:
+
+```bash
+node category-benchmark/run-category-benchmark.mjs              # category-benchmark_2026-03-10-16-50.json
+node category-benchmark/run-category-benchmark.mjs keyword_fix  # category-benchmark_2026-03-10-16-50_keyword_fix.json
+```
 
 ```
-tests/
-  helpers/
-    setup.js          # loads source files, resets state between tests
-    dom-fixture.js    # minimal HTML fixture for jsdom
-  utils.test.js
-  categories.test.js
-  import-export.test.js
-  transactions.test.js
-  ui.test.js
-  storage.test.js
-  events.test.js
-  integration.test.js
+category-benchmark/
+  all_time_controle_de_gastos.csv   # ground-truth transactions (manually categorized)
+  run-category-benchmark.mjs        # benchmark script
+  category-benchmark_*.json         # output (generated, timestamped)
 ```
 
 ## Project Structure
@@ -72,14 +80,20 @@ tests/
 ```
 js/
   main.js             # app initialization
+  state.js            # shared mutable state (transactions, sort, filters)
   dom.js              # DOM element references
   utils.js            # date parsing, CSV line parsing, BRL-to-CAD conversion
-  categories.js       # category definitions, auto-categorization, dropdowns
+  category-engine.js  # category keywords, auto-categorization logic (no DOM deps)
+  categories.js       # re-exports category-engine, category dropdowns, UI handlers
   storage.js          # LocalStorage load/save
   transactions.js     # transaction CRUD, filtering, deduplication
   ui.js               # rendering, sorting, summary updates
   import-export.js    # CSV parsing (6 formats), export
   events.js           # event listener wiring
+tests/
+  helpers/            # test setup and DOM fixtures
+  *.test.js           # unit and integration tests (one per module)
+category-benchmark/   # category match benchmark utility
 index.html
 styles.css
 ```

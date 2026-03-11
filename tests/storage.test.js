@@ -1,4 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
+import { loadData, saveData } from '../js/storage.js';
+import { transactions } from '../js/state.js';
+import { categories, defaultCategories } from '../js/categories.js';
 
 describe('loadData', () => {
     it('does nothing when localStorage is empty', () => {
@@ -62,49 +65,28 @@ describe('saveData', () => {
         expect(saved.expense).toContain('NewCategory');
     });
 
-    it('calls saveToMonthlyFiles', () => {
-        const spy = vi.spyOn(globalThis, 'saveToMonthlyFiles');
+    it('does not crash when localStorage is full and alerts the user', () => {
+        const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+        vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+            throw new DOMException('QuotaExceededError');
+        });
+
+        transactions.push({
+            date: new Date(2025, 3, 12), description: 'Test', amount: 50,
+            type: 'expense', category: 'Casa', account: 'Amex'
+        });
+
+        expect(() => saveData()).not.toThrow();
+        expect(alertSpy).toHaveBeenCalledWith('Could not save data. LocalStorage may be full or disabled.');
+        vi.restoreAllMocks();
+    });
+
+    it('does not save monthly files to localStorage', () => {
+        transactions.push({
+            date: new Date(2025, 0, 15), description: 'Test', amount: 10, type: 'expense', category: 'Casa', account: 'Amex'
+        });
         saveData();
-        expect(spy).toHaveBeenCalled();
-        spy.mockRestore();
+        expect(localStorage.getItem('transactions_2025-01.csv')).toBeNull();
     });
 });
 
-describe('saveToMonthlyFiles', () => {
-    it('groups transactions by month', () => {
-        transactions.push(
-            { date: new Date(2025, 0, 15), description: 'Jan', amount: 10, type: 'expense', category: 'Casa', account: 'Amex' },
-            { date: new Date(2025, 1, 15), description: 'Feb', amount: 20, type: 'expense', category: 'Casa', account: 'Amex' }
-        );
-
-        saveToMonthlyFiles();
-
-        expect(localStorage.getItem('transactions_2025-01.csv')).toBeTruthy();
-        expect(localStorage.getItem('transactions_2025-02.csv')).toBeTruthy();
-    });
-
-    it('groups same-month transactions together', () => {
-        transactions.push(
-            { date: new Date(2025, 0, 10), description: 'First', amount: 10, type: 'expense', category: 'Casa', account: 'Amex' },
-            { date: new Date(2025, 0, 20), description: 'Second', amount: 20, type: 'expense', category: 'Casa', account: 'Amex' }
-        );
-
-        saveToMonthlyFiles();
-
-        const csv = localStorage.getItem('transactions_2025-01.csv');
-        expect(csv).toContain('First');
-        expect(csv).toContain('Second');
-    });
-
-    it('CSV content starts with BOM and has header', () => {
-        transactions.push(
-            { date: new Date(2025, 0, 15), description: 'Test', amount: 10, type: 'expense', category: 'Casa', account: 'Amex' }
-        );
-
-        saveToMonthlyFiles();
-
-        const csv = localStorage.getItem('transactions_2025-01.csv');
-        expect(csv.startsWith('\uFEFF')).toBe(true);
-        expect(csv).toContain('Date,Description,Category,Account,Amount,Type');
-    });
-});

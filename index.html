@@ -42,7 +42,9 @@
                         <option value="all">All Time</option>
                         <option value="current-month">Current Month</option>
                         <option value="last-month">Last Month</option>
+                        <option value="two-months-ago">2 Months Ago</option>
                         <option value="current-year">Current Year</option>
+                        <option value="last-year">Last Year</option>
                         <option value="custom">Custom Range</option>
                     </select>
                 </div>
@@ -99,7 +101,7 @@
                     <thead>
                         <tr>
                             <th><input type="checkbox" id="select-all-checkbox"></th>
-                            <th data-sort="date" class="sortable">Date <span class="sort-icon">▼</span></th>
+                            <th data-sort="date" class="sortable">Date <span class="sort-icon"></span></th>
                             <th data-sort="description" class="sortable">Description <span class="sort-icon"></span></th>
                             <th data-sort="amount" class="sortable">Amount <span class="sort-icon"></span></th>
                             <th data-sort="category" class="sortable">Category <span class="sort-icon"></span></th>
@@ -177,14 +179,6 @@
         </div>
     </div>
     
-    <script src="js/utils.js"></script>
-    <script src="js/dom.js"></script>
-    <script src="js/categories.js"></script>
-    <script src="js/storage.js"></script>
-    <script src="js/transactions.js"></script>
-    <script src="js/ui.js"></script>
-    <script src="js/import-export.js"></script>
-    <script src="js/events.js"></script>
-    <script src="js/main.js"></script>
+    <script type="module" src="js/main.js"></script>
 </body>
 </html>

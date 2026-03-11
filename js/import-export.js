@@ -1,63 +1,72 @@
+import { transactions, currentFilter } from './state.js';
+import { fileInput, fileTypeSelect, importBtn } from './dom.js';
+import { parseDate, parseCSVLine, BRLtoCAD } from './utils.js';
+import { categories, categorizeTransaction } from './categories.js';
+import { getFilteredTransactions, saveAndRefresh } from './transactions.js';
+import { sortTransactions } from './ui.js';
+
+export function getTransactionKey(transaction) {
+    const dateStr = transaction.date ? transaction.date.toISOString().split('T')[0] : 'no-date';
+    return `${dateStr}-${transaction.description}-${transaction.amount}-${transaction.type}-${transaction.account}`;
+}
+
 // Handle import button click
-function handleImport() {
+export function handleImport() {
     const files = fileInput.files;
-    
+
     if (!files.length) {
         alert('Please select at least one file to import.');
         return;
     }
-    
+
     // Disable import button during import
     importBtn.disabled = true;
     importBtn.textContent = 'Importing...';
-    
+
     // Process files sequentially
-    processFiles(files, 0, 0, 0);
+    processFiles(files, 0, 0, 0, 0);
 }
 
 // Process files sequentially
-function processFiles(files, index, totalImported, totalDuplicates) {
+export function processFiles(files, index, totalImported, totalDuplicates, totalErrors) {
     // If all files have been processed
     if (index >= files.length) {
         // Re-enable import button
         importBtn.disabled = false;
         importBtn.textContent = 'Import';
-        
+
+        const errorMsg = totalErrors > 0 ? ` ${totalErrors} error(s) occurred.` : '';
+
         if (totalImported > 0) {
-            // Save data
-            saveData();
-            
-            // Render transactions
-            renderTransactions();
-            
-            // Update summary
-            updateSummary();
-            
-            alert(`Successfully imported ${totalImported} transactions from ${files.length} file(s). ${totalDuplicates} duplicates were ignored.`);
+            saveAndRefresh();
+
+            alert(`Successfully imported ${totalImported} transactions from ${files.length} file(s). ${totalDuplicates} duplicates were ignored.${errorMsg}`);
         } else {
-            alert(`No transactions were imported. ${totalDuplicates} duplicates were ignored.`);
+            alert(`No transactions were imported. ${totalDuplicates} duplicates were ignored.${errorMsg}`);
         }
-        
+
         return;
     }
-    
+
     // Get current file
     const file = files[index];
     const reader = new FileReader();
-    
+
     reader.onload = function(e) {
         const contents = e.target.result;
         const fileType = fileTypeSelect.value;
-        
+
         try {
             // Update import button text to show progress
             importBtn.textContent = `Importing (${index + 1}/${files.length})...`;
-            
-            const importedTransactions = parseCSV(contents, fileType);
-            
+
+            const parseResult = parseCSV(contents, fileType);
+            const importedTransactions = parseResult.transactions;
+            totalErrors += parseResult.errorCount;
+
             if (importedTransactions.length > 0) {
                 const transactionKeys = new Set(transactions.map(getTransactionKey));
-                
+
                 importedTransactions.forEach(importedTransaction => {
                     const importedTransactionKey = getTransactionKey(importedTransaction);
 
@@ -73,53 +82,56 @@ function processFiles(files, index, totalImported, totalDuplicates) {
                 });
 
                 // Process next file
-                processFiles(files, index + 1, totalImported, totalDuplicates);
+                processFiles(files, index + 1, totalImported, totalDuplicates, totalErrors);
             } else {
                 console.warn(`No transactions imported from file: ${file.name}`);
                 // Process next file
-                processFiles(files, index + 1, totalImported, totalDuplicates);
+                processFiles(files, index + 1, totalImported, totalDuplicates, totalErrors);
             }
         } catch (error) {
             console.error(`Error importing file ${file.name}: ${error.message}`);
+            totalErrors++;
             // Process next file
-            processFiles(files, index + 1, totalImported, totalDuplicates);
+            processFiles(files, index + 1, totalImported, totalDuplicates, totalErrors);
         }
     };
-    
+
     reader.onerror = function(event) {
         console.error(`Error reading file ${file.name}:`, event.target.error);
         alert(`Error reading file ${file.name}. Please check the file encoding and format.`);
+        totalErrors++;
         // Process next file
-        processFiles(files, index + 1, totalImported);
+        processFiles(files, index + 1, totalImported, totalDuplicates, totalErrors);
     };
-    
+
     // Try reading with UTF-8 encoding first, then fallback to Latin-1
     reader.readAsText(file, 'UTF-8');
 }
 
 // Parse CSV file based on file type
-function parseCSV(csvContent, fileType) {
+export function parseCSV(csvContent, fileType) {
     const lines = csvContent.split('\n');
     const importedTransactions = [];
+    let errorCount = 0;
     let actualFileType;
-    
+
     // Auto-detect file type if set to auto
     if (fileType === 'auto') {
         actualFileType = detectFileType(lines[0]);
     } else {
         actualFileType = fileType;
     }
-    
+
     // Skip header row for most file types
     const startRow = (actualFileType === 'td') ? 0 : 1;
-    
+
     for (let i = startRow; i < lines.length; i++) {
         const line = lines[i].trim();
         if (!line) continue;
-        
+
         try {
             let transaction;
-            
+
             switch (actualFileType) {
                 case 'fintracker':
                     transaction = parseFinTrackerTransaction(line, actualFileType);
@@ -142,22 +154,23 @@ function parseCSV(csvContent, fileType) {
                 default:
                     throw new Error('Unknown file type: ' + actualFileType);
             }
-            
+
             if (transaction) {
                 importedTransactions.push(transaction);
             }
         } catch (error) {
             console.error(`Error parsing line ${i + 1}: ${error.message}`);
+            errorCount++;
         }
     }
-    
-    return importedTransactions;
+
+    return { transactions: importedTransactions, errorCount };
 }
 
 // Detect file type based on header row
-function detectFileType(headerRow) {
+export function detectFileType(headerRow) {
     headerRow = headerRow.toLowerCase().trim();
-    
+
     if (headerRow.includes('date,description,category,account,amount,type')) {
         return 'fintracker';
     } else if (headerRow.includes('date,date processed,description,amount')) {
@@ -175,26 +188,27 @@ function detectFileType(headerRow) {
 }
 
 // Parse FinTracker export format
-function parseFinTrackerTransaction(line, fileType) {
-    // Format: Date,Description,Amount,Type,Category,Account
+export function parseFinTrackerTransaction(line, fileType) {
+    // Format: Date,Description,Category,Account,Amount,Type
     const parts = parseCSVLine(line);
     if (parts.length < 6) return null;
-    
+
     const dateStr = parts[0];
-    const description = parts[1].replace(/^"|"$/g, '').replace(/""/g, '"'); // Remove quotes and handle escaped quotes
+    const description = parts[1];
+    const type = parts[5].toLowerCase();
     const category = parts[2] || categorizeTransaction(description, type);
     const account = parts[3];
     const amount = parseFloat(parts[4]);
-    const type = parts[5].toLowerCase();
-    
+
     // Parse date (format: YYYY-MM-DD)
     const date = parseDate(dateStr, fileType);
-    
-    // Add any new categories that don't exist yet
+    if (!date) return null;
+
+    // Side effect: adds imported categories to the global categories list so re-imports preserve custom categories
     if (category && !categories[type].includes(category)) {
         categories[type].push(category);
     }
-    
+
     return {
         date,
         description,
@@ -206,24 +220,25 @@ function parseFinTrackerTransaction(line, fileType) {
 }
 
 // Parse American Express transaction
-function parseAmexTransaction(line, fileType) {
+export function parseAmexTransaction(line, fileType) {
     // Format: Date,Date Processed,Description,Amount
     const parts = parseCSVLine(line);
     if (parts.length < 4) return null;
-    
+
     const dateStr = parts[0];
     const description = parts[2];
     const amount = parseFloat(parts[3]);
-    
+
     // Parse date (format: DD-MMM-YY)
     const date = parseDate(dateStr, fileType);
-    
+    if (!date) return null;
+
     // Determine transaction type (negative amount = payment/income, positive = expense)
     const type = amount < 0 ? 'income' : 'expense';
-    
+
     // Determine category based on description
     const category = categorizeTransaction(description, type);
-    
+
     return {
         date,
         description,
@@ -235,26 +250,27 @@ function parseAmexTransaction(line, fileType) {
 }
 
 // Parse Mastercard transaction
-function parseMastercardTransaction(line, fileType) {
+export function parseMastercardTransaction(line, fileType) {
     // Format: Description,Type,Card Holder Name,Date,Time,Amount
     const parts = parseCSVLine(line);
     if (parts.length < 6) return null;
-    
+
     const description = parts[0];
     const transactionType = parts[1];
     const cardHolder = parts[2];
     const dateStr = parts[3];
     const amount = parseFloat(parts[5]);
-    
+
     // Parse date (format: M/D/YYYY)
     const date = parseDate(dateStr, fileType);
-    
+    if (!date) return null;
+
     // Determine transaction type (PAYMENT = income, PURCHASE = expense)
     const type = transactionType === 'PAYMENT' ? 'income' : 'expense';
-    
+
     // Determine category based on description
     const category = categorizeTransaction(description, type);
-    
+
     return {
         date,
         description: `${description} (${cardHolder})`,
@@ -266,19 +282,20 @@ function parseMastercardTransaction(line, fileType) {
 }
 
 // Parse Simplii transaction
-function parseSimpliiTransaction(line, fileType) {
+export function parseSimpliiTransaction(line, fileType) {
     // Format: Date, Transaction Details, Funds Out, Funds In
     const parts = parseCSVLine(line);
     if (parts.length < 4) return null;
-    
+
     const dateStr = parts[0].trim();
     const description = parts[1].trim();
     const fundsOut = parts[2].trim();
     const fundsIn = parts[3].trim();
-    
+
     // Parse date (format: M/D/YYYY)
     const date = parseDate(dateStr, fileType);
-    
+    if (!date) return null;
+
     // Determine amount and type
     let amount, type;
     if (fundsIn && parseFloat(fundsIn) > 0) {
@@ -288,10 +305,10 @@ function parseSimpliiTransaction(line, fileType) {
         amount = parseFloat(fundsOut);
         type = 'expense';
     }
-    
+
     // Determine category based on description
     const category = categorizeTransaction(description, type);
-    
+
     return {
         date,
         description,
@@ -303,14 +320,14 @@ function parseSimpliiTransaction(line, fileType) {
 }
 
 // Parse TD transaction
-function parseTDTransaction(line, fileType) {
+export function parseTDTransaction(line, fileType) {
     // Format: Date,Description,Amount Out,Amount In,Balance
     const parts = parseCSVLine(line);
     if (parts.length < 3) return null;
-    
+
     const dateStr = parts[0];
     const description = parts[1];
-    
+
     // TD format has separate columns for money out and in
     // If amount out is present, it's an expense
     // If amount in is present, it's income
@@ -325,13 +342,14 @@ function parseTDTransaction(line, fileType) {
         // Skip if no amount
         return null;
     }
-    
+
     // Parse date (format: M/D/YYYY)
     const date = parseDate(dateStr, fileType);
-    
+    if (!date) return null;
+
     // Determine category based on description
     const category = categorizeTransaction(description, type);
-    
+
     return {
         date,
         description,
@@ -343,36 +361,36 @@ function parseTDTransaction(line, fileType) {
 }
 
 // Parse Bradesco bank statement
-function parseBradescoTransaction(line, fileType) {
+export function parseBradescoTransaction(line, fileType) {
     // Remove BOM character if present
     line = line.replace(/^\uFEFF/, '');
 
     // Split by semicolon and trim each part
     const parts = line.split(';').map(part => part.trim());
-    
+
     // Skip empty or metadata rows
-    if (parts.length < 6 || 
-        !parts[0] || 
-        parts[0].startsWith('Extrato') || 
-        parts[0].startsWith('Filtro') || 
-        parts[0].startsWith('Os dados') || 
-        parts[0].startsWith('Últimos') || 
+    if (parts.length < 6 ||
+        !parts[0] ||
+        parts[0].startsWith('Extrato') ||
+        parts[0].startsWith('Filtro') ||
+        parts[0].startsWith('Os dados') ||
+        parts[0].startsWith('Últimos') ||
         parts[0].startsWith('Total')) {
         return null;
     }
-    
+
     // Skip header row
     if (parts[0].toLowerCase() === 'data') {
         return null;
     }
-    
+
     const dateStr = parts[0];
     const description = parts[1];
-    
-    // Parse credit and debit amounts (first eliminate dots, then replaces comma with dot for decimal)
-    const creditAmount = parts[3] ? parseFloat(parts[3].replace('.', '').replace(',', '.')) : 0;
-    const debitAmount = parts[4] ? parseFloat(parts[4].replace('.', '').replace(',', '.')) : 0;
-    
+
+    // Parse credit and debit amounts (first eliminate all thousand-separator dots, then replace comma with dot for decimal)
+    const creditAmount = parts[3] ? parseFloat(parts[3].replace(/\./g, '').replace(',', '.')) : 0;
+    const debitAmount = parts[4] ? parseFloat(parts[4].replace(/\./g, '').replace(',', '.')) : 0;
+
     // Determine amount and type
     let amount, type;
     if (creditAmount > 0) {
@@ -387,10 +405,11 @@ function parseBradescoTransaction(line, fileType) {
 
     // Parse date (format: DD/MM/YYYY)
     const date = parseDate(dateStr, fileType);
-    
+    if (!date) return null;
+
     // Determine category based on description
     const category = categorizeTransaction(description, type);
-    
+
     return {
         date,
         description,
@@ -402,53 +421,55 @@ function parseBradescoTransaction(line, fileType) {
 }
 
 // Export to CSV
-function exportToCSV() {
+export function exportToCSV() {
     // Get filtered transactions
     const sortedTransactions = sortTransactions(getFilteredTransactions());
-    
+
     // Convert to CSV
     const csvContent = convertTransactionsToCSV(sortedTransactions);
-    
+
     // Create download link
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
-    
+
     // Set link properties
     const date = currentFilter.startDate ? currentFilter.startDate : new Date();
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     link.href = url;
     link.download = `${year}_${month}_controle_de_gastos.csv`;
-    
+
     // Trigger download
     document.body.appendChild(link);
     link.click();
-    
+
     // Clean up
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
 }
 
 // Convert transactions to CSV format
-function convertTransactionsToCSV(transactionsToExport) {
+export function convertTransactionsToCSV(transactionsToExport) {
     // Add UTF-8 BOM
     const BOM = '\uFEFF';
-        
+
     // Define CSV header
     const header = 'Date,Description,Category,Account,Amount,Type\n';
-    
+
+    const escapeCSVField = (field) => `"${String(field).replace(/"/g, '""')}"`;
+
     // Convert each transaction to CSV row
     const rows = transactionsToExport.map(transaction => {
         const date = transaction.date.toISOString().split('T')[0];
-        const description = `"${transaction.description.replace(/"/g, '""')}"`;
+        const description = escapeCSVField(transaction.description);
+        const category = escapeCSVField(transaction.category);
+        const account = escapeCSVField(transaction.account);
         const amount = transaction.amount;
         const type = transaction.type;
-        const category = transaction.category;
-        const account = transaction.account;
-        
+
         return `${date},${description},${category},${account},${amount},${type}`;
     }).join('\n');
-    
+
     return BOM + header + rows;
 }

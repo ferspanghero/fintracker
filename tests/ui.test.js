@@ -1,4 +1,12 @@
 import { describe, it, expect, vi } from 'vitest';
+import { sortTransactions, renderTransactions, updateSummary, handleDateRangeChange, applyCustomDateFilter, handleSort, updateSortIcons } from '../js/ui.js';
+import { transactions, currentSort, currentFilter } from '../js/state.js';
+import { categories } from '../js/categories.js';
+import {
+    transactionsBody, selectAllCheckbox, totalIncomeElement,
+    totalExpensesElement, netAmountElement, dateRangeSelect,
+    customDateContainer, startDateInput, endDateInput
+} from '../js/dom.js';
 
 describe('sortTransactions', () => {
     const makeTxn = (overrides) => ({
@@ -12,7 +20,7 @@ describe('sortTransactions', () => {
     });
 
     it('sorts by date ascending', () => {
-        currentSort = { field: 'date', direction: 'asc' };
+        Object.assign(currentSort, { field: 'date', direction: 'asc' });
         const txns = [
             makeTxn({ date: new Date(2025, 5, 1) }),
             makeTxn({ date: new Date(2025, 0, 1) }),
@@ -25,7 +33,7 @@ describe('sortTransactions', () => {
     });
 
     it('sorts by date descending', () => {
-        currentSort = { field: 'date', direction: 'desc' };
+        Object.assign(currentSort, { field: 'date', direction: 'desc' });
         const txns = [
             makeTxn({ date: new Date(2025, 0, 1) }),
             makeTxn({ date: new Date(2025, 5, 1) })
@@ -36,7 +44,7 @@ describe('sortTransactions', () => {
     });
 
     it('sorts by amount ascending (expenses negative, income positive)', () => {
-        currentSort = { field: 'amount', direction: 'asc' };
+        Object.assign(currentSort, { field: 'amount', direction: 'asc' });
         const txns = [
             makeTxn({ amount: 100, type: 'income' }),
             makeTxn({ amount: 200, type: 'expense' }),
@@ -51,7 +59,7 @@ describe('sortTransactions', () => {
     });
 
     it('sorts by amount descending', () => {
-        currentSort = { field: 'amount', direction: 'desc' };
+        Object.assign(currentSort, { field: 'amount', direction: 'desc' });
         const txns = [
             makeTxn({ amount: 200, type: 'expense' }),
             makeTxn({ amount: 100, type: 'income' })
@@ -61,7 +69,7 @@ describe('sortTransactions', () => {
     });
 
     it('sorts by category using pt-BR locale', () => {
-        currentSort = { field: 'category', direction: 'asc' };
+        Object.assign(currentSort, { field: 'category', direction: 'asc' });
         const txns = [
             makeTxn({ category: 'Viagem' }),
             makeTxn({ category: 'Alimentação' }),
@@ -74,7 +82,7 @@ describe('sortTransactions', () => {
     });
 
     it('sorts by description (string field)', () => {
-        currentSort = { field: 'description', direction: 'asc' };
+        Object.assign(currentSort, { field: 'description', direction: 'asc' });
         const txns = [
             makeTxn({ description: 'Zara' }),
             makeTxn({ description: 'Amazon' }),
@@ -87,7 +95,7 @@ describe('sortTransactions', () => {
     });
 
     it('handles null/undefined date safely', () => {
-        currentSort = { field: 'date', direction: 'asc' };
+        Object.assign(currentSort, { field: 'date', direction: 'asc' });
         const txns = [
             makeTxn({ date: new Date(2025, 3, 1) }),
             makeTxn({ date: undefined })
@@ -96,7 +104,7 @@ describe('sortTransactions', () => {
     });
 
     it('handles null/undefined category safely', () => {
-        currentSort = { field: 'category', direction: 'asc' };
+        Object.assign(currentSort, { field: 'category', direction: 'asc' });
         const txns = [
             makeTxn({ category: 'Casa' }),
             makeTxn({ category: undefined })
@@ -105,7 +113,7 @@ describe('sortTransactions', () => {
     });
 
     it('does not mutate original array', () => {
-        currentSort = { field: 'date', direction: 'asc' };
+        Object.assign(currentSort, { field: 'date', direction: 'asc' });
         const txns = [
             makeTxn({ date: new Date(2025, 5, 1) }),
             makeTxn({ date: new Date(2025, 0, 1) })
@@ -129,20 +137,19 @@ describe('renderTransactions', () => {
     });
 
     it('renders empty table for no transactions', () => {
-        transactions = [];
         renderTransactions();
         expect(transactionsBody.innerHTML.trim()).toBe('');
     });
 
     it('renders one expense transaction', () => {
-        transactions = [makeTxn()];
+        transactions.push(makeTxn());
         renderTransactions();
         const rows = transactionsBody.querySelectorAll('tr');
         expect(rows.length).toBe(1);
     });
 
     it('displays expense amount with negative sign', () => {
-        transactions = [makeTxn({ amount: 50, type: 'expense' })];
+        transactions.push(makeTxn({ amount: 50, type: 'expense' }));
         renderTransactions();
         const amountCell = transactionsBody.querySelector('.negative');
         expect(amountCell).toBeTruthy();
@@ -150,7 +157,7 @@ describe('renderTransactions', () => {
     });
 
     it('displays income amount with positive sign', () => {
-        transactions = [makeTxn({ amount: 1000, type: 'income' })];
+        transactions.push(makeTxn({ amount: 1000, type: 'income' }));
         renderTransactions();
         const amountCell = transactionsBody.querySelector('.positive');
         expect(amountCell).toBeTruthy();
@@ -158,7 +165,7 @@ describe('renderTransactions', () => {
     });
 
     it('populates category dropdown for each row', () => {
-        transactions = [makeTxn({ type: 'expense', category: 'Casa' })];
+        transactions.push(makeTxn({ type: 'expense', category: 'Casa' }));
         renderTransactions();
         const dropdown = transactionsBody.querySelector('.category-edit-dropdown');
         expect(dropdown).toBeTruthy();
@@ -166,15 +173,46 @@ describe('renderTransactions', () => {
         expect(options.some(o => o.value === 'Casa')).toBe(true);
     });
 
+    it('escapes HTML in description to prevent XSS', () => {
+        transactions.push(makeTxn({ description: '<img src=x onerror=alert(1)>' }));
+        renderTransactions();
+        const descCell = transactionsBody.querySelector('.td-longtext');
+        expect(descCell.innerHTML).not.toContain('<img');
+        expect(descCell.textContent).toBe('<img src=x onerror=alert(1)>');
+    });
+
+    it('escapes HTML in account field', () => {
+        transactions.push(makeTxn({ account: '<script>alert(1)</script>' }));
+        renderTransactions();
+        const row = transactionsBody.querySelector('tr');
+        const accountCell = row.querySelector('[data-field="account"]');
+        expect(accountCell.innerHTML).not.toContain('<script>');
+    });
+
+    it('sets correct data-index from original transactions array', () => {
+        // Push 3 transactions, filter to only show the 2nd one
+        transactions.push(
+            makeTxn({ date: new Date(2025, 0, 1), description: 'First' }),
+            makeTxn({ date: new Date(2025, 5, 1), description: 'Second' }),
+            makeTxn({ date: new Date(2025, 0, 2), description: 'Third' })
+        );
+        currentFilter.startDate = new Date(2025, 4, 1);
+        renderTransactions();
+        const rows = transactionsBody.querySelectorAll('tr');
+        expect(rows.length).toBe(1);
+        // The 2nd transaction (index 1 in original array) should be the only row
+        expect(rows[0].getAttribute('data-index')).toBe('1');
+    });
+
     it('resets select-all checkbox', () => {
         selectAllCheckbox.checked = true;
-        transactions = [makeTxn()];
+        transactions.push(makeTxn());
         renderTransactions();
         expect(selectAllCheckbox.checked).toBe(false);
     });
 
     it('renders multiple transactions', () => {
-        transactions = [makeTxn(), makeTxn({ description: 'Second' })];
+        transactions.push(makeTxn(), makeTxn({ description: 'Second' }));
         renderTransactions();
         const rows = transactionsBody.querySelectorAll('tr');
         expect(rows.length).toBe(2);
@@ -183,7 +221,6 @@ describe('renderTransactions', () => {
 
 describe('updateSummary', () => {
     it('shows zeroes for no transactions', () => {
-        transactions = [];
         updateSummary();
         expect(totalIncomeElement.textContent).toBe('$0.00');
         expect(totalExpensesElement.textContent).toBe('$0.00');
@@ -191,7 +228,7 @@ describe('updateSummary', () => {
     });
 
     it('calculates income only', () => {
-        transactions = [{ date: new Date(), description: 'Salary', amount: 1000, type: 'income', category: 'Trabalho', account: 'TD' }];
+        transactions.push({ date: new Date(), description: 'Salary', amount: 1000, type: 'income', category: 'Trabalho', account: 'TD' });
         updateSummary();
         expect(totalIncomeElement.textContent).toBe('$1000.00');
         expect(totalExpensesElement.textContent).toBe('$0.00');
@@ -200,7 +237,7 @@ describe('updateSummary', () => {
     });
 
     it('calculates expense only', () => {
-        transactions = [{ date: new Date(), description: 'Groceries', amount: 500, type: 'expense', category: 'Mercado', account: 'Amex' }];
+        transactions.push({ date: new Date(), description: 'Groceries', amount: 500, type: 'expense', category: 'Mercado', account: 'Amex' });
         updateSummary();
         expect(totalIncomeElement.textContent).toBe('$0.00');
         expect(totalExpensesElement.textContent).toBe('$500.00');
@@ -209,10 +246,10 @@ describe('updateSummary', () => {
     });
 
     it('calculates mixed income and expenses', () => {
-        transactions = [
+        transactions.push(
             { date: new Date(), description: 'Salary', amount: 1000, type: 'income', category: 'Trabalho', account: 'TD' },
             { date: new Date(), description: 'Groceries', amount: 300, type: 'expense', category: 'Mercado', account: 'Amex' }
-        ];
+        );
         updateSummary();
         expect(totalIncomeElement.textContent).toBe('$1000.00');
         expect(totalExpensesElement.textContent).toBe('$300.00');
@@ -245,6 +282,37 @@ describe('handleDateRangeChange', () => {
         expect(currentFilter.startDate.getMonth()).toBe(expectedMonth);
     });
 
+    it('sets two-months-ago date range (single month, 2 months ago)', () => {
+        dateRangeSelect.value = 'two-months-ago';
+        handleDateRangeChange();
+        const today = new Date();
+        // Start: 1st of 2 months ago
+        const expectedStart = new Date(today.getFullYear(), today.getMonth() - 2, 1);
+        expect(currentFilter.startDate.getFullYear()).toBe(expectedStart.getFullYear());
+        expect(currentFilter.startDate.getMonth()).toBe(expectedStart.getMonth());
+        expect(currentFilter.startDate.getDate()).toBe(1);
+        // End: last day of that same month (2 months ago)
+        const expectedEnd = new Date(today.getFullYear(), today.getMonth() - 1, 0);
+        expect(currentFilter.endDate.getFullYear()).toBe(expectedEnd.getFullYear());
+        expect(currentFilter.endDate.getMonth()).toBe(expectedEnd.getMonth());
+        expect(currentFilter.endDate.getDate()).toBe(expectedEnd.getDate());
+    });
+
+    it('sets two-months-ago across year boundary', () => {
+        // When currentMonth=0 (Jan), 2 months ago = Nov of previous year
+        // new Date(year, 0-2, 1) = new Date(year, -2, 1) = Nov 1 prev year
+        // new Date(year, 0-1, 0) = new Date(year, -1, 0) = Nov 30 prev year
+        const today = new Date();
+        const expectedStart = new Date(today.getFullYear(), today.getMonth() - 2, 1);
+        const expectedEnd = new Date(today.getFullYear(), today.getMonth() - 1, 0);
+        dateRangeSelect.value = 'two-months-ago';
+        handleDateRangeChange();
+        expect(currentFilter.startDate.getFullYear()).toBe(expectedStart.getFullYear());
+        expect(currentFilter.startDate.getMonth()).toBe(expectedStart.getMonth());
+        expect(currentFilter.endDate.getFullYear()).toBe(expectedEnd.getFullYear());
+        expect(currentFilter.endDate.getMonth()).toBe(expectedEnd.getMonth());
+    });
+
     it('sets current-year date range', () => {
         dateRangeSelect.value = 'current-year';
         handleDateRangeChange();
@@ -252,6 +320,18 @@ describe('handleDateRangeChange', () => {
         expect(currentFilter.startDate.getFullYear()).toBe(year);
         expect(currentFilter.startDate.getMonth()).toBe(0);
         expect(currentFilter.startDate.getDate()).toBe(1);
+        expect(currentFilter.endDate.getMonth()).toBe(11);
+        expect(currentFilter.endDate.getDate()).toBe(31);
+    });
+
+    it('sets last-year date range', () => {
+        dateRangeSelect.value = 'last-year';
+        handleDateRangeChange();
+        const lastYear = new Date().getFullYear() - 1;
+        expect(currentFilter.startDate.getFullYear()).toBe(lastYear);
+        expect(currentFilter.startDate.getMonth()).toBe(0);
+        expect(currentFilter.startDate.getDate()).toBe(1);
+        expect(currentFilter.endDate.getFullYear()).toBe(lastYear);
         expect(currentFilter.endDate.getMonth()).toBe(11);
         expect(currentFilter.endDate.getDate()).toBe(31);
     });
@@ -308,20 +388,20 @@ describe('applyCustomDateFilter', () => {
 
 describe('handleSort', () => {
     it('sets ascending sort on first click', () => {
-        currentSort = { field: 'date', direction: 'desc' };
+        Object.assign(currentSort, { field: 'date', direction: 'desc' });
         handleSort('amount');
         expect(currentSort.field).toBe('amount');
         expect(currentSort.direction).toBe('asc');
     });
 
     it('toggles direction on same field click', () => {
-        currentSort = { field: 'amount', direction: 'asc' };
+        Object.assign(currentSort, { field: 'amount', direction: 'asc' });
         handleSort('amount');
         expect(currentSort.direction).toBe('desc');
     });
 
     it('toggles back to asc on third click', () => {
-        currentSort = { field: 'amount', direction: 'desc' };
+        Object.assign(currentSort, { field: 'amount', direction: 'desc' });
         handleSort('amount');
         expect(currentSort.direction).toBe('asc');
     });
@@ -329,21 +409,21 @@ describe('handleSort', () => {
 
 describe('updateSortIcons', () => {
     it('shows ascending icon for current sort field', () => {
-        currentSort = { field: 'date', direction: 'asc' };
+        Object.assign(currentSort, { field: 'date', direction: 'asc' });
         updateSortIcons();
         const dateTh = document.querySelector('th[data-sort="date"] .sort-icon');
         expect(dateTh.textContent).toBe('▲');
     });
 
     it('shows descending icon for current sort field', () => {
-        currentSort = { field: 'date', direction: 'desc' };
+        Object.assign(currentSort, { field: 'date', direction: 'desc' });
         updateSortIcons();
         const dateTh = document.querySelector('th[data-sort="date"] .sort-icon');
         expect(dateTh.textContent).toBe('▼');
     });
 
     it('clears other field icons', () => {
-        currentSort = { field: 'date', direction: 'asc' };
+        Object.assign(currentSort, { field: 'date', direction: 'asc' });
         updateSortIcons();
         const amountIcon = document.querySelector('th[data-sort="amount"] .sort-icon');
         expect(amountIcon.textContent).toBe('');

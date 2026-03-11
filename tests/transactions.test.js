@@ -1,4 +1,15 @@
 import { describe, it, expect, vi } from 'vitest';
+import { getFilteredTransactions, openAddTransactionModal, handleAddTransaction, updateTransactionField, deleteTransaction, deleteSelectedTransactions, confirmClearAll, saveAndRefresh } from '../js/transactions.js';
+import { getTransactionKey } from '../js/import-export.js';
+import { renderTransactions } from '../js/ui.js';
+import { populateTransactionCategorySelect } from '../js/categories.js';
+import { transactions, currentFilter, currentSort } from '../js/state.js';
+import { categories } from '../js/categories.js';
+import {
+    addTransactionModal, transactionDateInput, transactionDescriptionInput,
+    transactionAmountInput, transactionAccountSelect, transactionCategorySelect,
+    newCategoryGroup, newCategoryNameInput, transactionsBody, selectAllCheckbox
+} from '../js/dom.js';
 
 describe('getTransactionKey', () => {
     it('generates key from transaction fields', () => {
@@ -30,6 +41,12 @@ describe('getTransactionKey', () => {
         const txn2 = { date: new Date(2025, 3, 12), description: 'Test', amount: 50, type: 'expense', account: 'TD' };
         expect(getTransactionKey(txn1)).not.toBe(getTransactionKey(txn2));
     });
+
+    it('handles null date without crashing', () => {
+        const txn = { date: null, description: 'Test', amount: 50, type: 'expense', account: 'Amex' };
+        expect(() => getTransactionKey(txn)).not.toThrow();
+        expect(getTransactionKey(txn)).toContain('Test');
+    });
 });
 
 describe('getFilteredTransactions', () => {
@@ -44,16 +61,16 @@ describe('getFilteredTransactions', () => {
     });
 
     it('returns all transactions with default filter', () => {
-        transactions = [makeTxn(), makeTxn(), makeTxn()];
+        transactions.push(makeTxn(), makeTxn(), makeTxn());
         const result = getFilteredTransactions();
         expect(result.length).toBe(3);
     });
 
     it('filters by startDate', () => {
-        transactions = [
+        transactions.push(
             makeTxn({ date: new Date(2025, 0, 1) }),
             makeTxn({ date: new Date(2025, 5, 1) })
-        ];
+        );
         currentFilter.startDate = new Date(2025, 3, 1);
         const result = getFilteredTransactions();
         expect(result.length).toBe(1);
@@ -61,10 +78,10 @@ describe('getFilteredTransactions', () => {
     });
 
     it('filters by endDate (inclusive end of day)', () => {
-        transactions = [
+        transactions.push(
             makeTxn({ date: new Date(2025, 0, 1) }),
             makeTxn({ date: new Date(2025, 5, 1) })
-        ];
+        );
         currentFilter.endDate = new Date(2025, 3, 1);
         const result = getFilteredTransactions();
         expect(result.length).toBe(1);
@@ -72,11 +89,11 @@ describe('getFilteredTransactions', () => {
     });
 
     it('filters by both start and end date', () => {
-        transactions = [
+        transactions.push(
             makeTxn({ date: new Date(2025, 0, 1) }),
             makeTxn({ date: new Date(2025, 3, 15) }),
             makeTxn({ date: new Date(2025, 8, 1) })
-        ];
+        );
         currentFilter.startDate = new Date(2025, 2, 1);
         currentFilter.endDate = new Date(2025, 5, 30);
         const result = getFilteredTransactions();
@@ -85,11 +102,11 @@ describe('getFilteredTransactions', () => {
     });
 
     it('filters by category', () => {
-        transactions = [
+        transactions.push(
             makeTxn({ category: 'Casa' }),
             makeTxn({ category: 'Mercado' }),
             makeTxn({ category: 'Casa' })
-        ];
+        );
         currentFilter.category = 'Casa';
         const result = getFilteredTransactions();
         expect(result.length).toBe(2);
@@ -97,20 +114,20 @@ describe('getFilteredTransactions', () => {
     });
 
     it('returns all categories when filter is "all"', () => {
-        transactions = [
+        transactions.push(
             makeTxn({ category: 'Casa' }),
             makeTxn({ category: 'Mercado' })
-        ];
+        );
         currentFilter.category = 'all';
         const result = getFilteredTransactions();
         expect(result.length).toBe(2);
     });
 
     it('filters by text matching description', () => {
-        transactions = [
+        transactions.push(
             makeTxn({ description: 'STARBUCKS COFFEE' }),
             makeTxn({ description: 'COSTCO' })
-        ];
+        );
         currentFilter.textFilter = 'starbucks';
         const result = getFilteredTransactions();
         expect(result.length).toBe(1);
@@ -118,39 +135,53 @@ describe('getFilteredTransactions', () => {
     });
 
     it('filters by text matching category', () => {
-        transactions = [
+        transactions.push(
             makeTxn({ description: 'Something', category: 'Mercado' }),
             makeTxn({ description: 'Something', category: 'Casa' })
-        ];
+        );
         currentFilter.textFilter = 'mercado';
         const result = getFilteredTransactions();
         expect(result.length).toBe(1);
     });
 
     it('filters by text matching account', () => {
-        transactions = [
+        transactions.push(
             makeTxn({ account: 'Amex' }),
             makeTxn({ account: 'TD' })
-        ];
+        );
         currentFilter.textFilter = 'amex';
         const result = getFilteredTransactions();
         expect(result.length).toBe(1);
     });
 
     it('text filter is case insensitive', () => {
-        transactions = [makeTxn({ description: 'STARBUCKS' })];
+        transactions.push(makeTxn({ description: 'STARBUCKS' }));
         currentFilter.textFilter = 'STARBUCKS';
         expect(getFilteredTransactions().length).toBe(1);
         currentFilter.textFilter = 'starbucks';
         expect(getFilteredTransactions().length).toBe(1);
     });
 
+    it('does not crash when category or account is null', () => {
+        transactions.push({
+            date: new Date(2025, 3, 12),
+            description: 'Test',
+            amount: 50,
+            type: 'expense',
+            category: null,
+            account: undefined
+        });
+        currentFilter.textFilter = 'test';
+        expect(() => getFilteredTransactions()).not.toThrow();
+        expect(getFilteredTransactions().length).toBe(1);
+    });
+
     it('combined filters work together', () => {
-        transactions = [
+        transactions.push(
             makeTxn({ date: new Date(2025, 3, 12), category: 'Casa', description: 'Home Repair' }),
             makeTxn({ date: new Date(2025, 3, 12), category: 'Mercado', description: 'Groceries' }),
             makeTxn({ date: new Date(2025, 0, 1), category: 'Casa', description: 'Old Home' })
-        ];
+        );
         currentFilter.startDate = new Date(2025, 2, 1);
         currentFilter.category = 'Casa';
         currentFilter.textFilter = 'repair';
@@ -246,25 +277,35 @@ describe('handleAddTransaction', () => {
 
 describe('updateTransactionField', () => {
     it('updates description field', () => {
-        transactions = [{ date: new Date(), description: 'Old', amount: 50, type: 'expense', category: 'Casa', account: 'Amex' }];
+        transactions.push({ date: new Date(), description: 'Old', amount: 50, type: 'expense', category: 'Casa', account: 'Amex' });
         updateTransactionField(0, 'description', 'New Description');
         expect(transactions[0].description).toBe('New Description');
     });
 
-    it('updates date field', () => {
-        transactions = [{ date: new Date(2025, 0, 1), description: 'Test', amount: 50, type: 'expense', category: 'Casa', account: 'Amex' }];
+    it('updates date field using local time (not UTC)', () => {
+        transactions.push({ date: new Date(2025, 0, 1), description: 'Test', amount: 50, type: 'expense', category: 'Casa', account: 'Amex' });
         updateTransactionField(0, 'date', '2025-06-15');
         expect(transactions[0].date).toBeInstanceOf(Date);
+        // Must use local date parsing — day should be 15 regardless of timezone
+        expect(transactions[0].date.getFullYear()).toBe(2025);
+        expect(transactions[0].date.getMonth()).toBe(5); // June = 5
+        expect(transactions[0].date.getDate()).toBe(15);
+    });
+
+    it('does not update amount when value is not a valid number', () => {
+        transactions.push({ date: new Date(), description: 'Test', amount: 50, type: 'expense', category: 'Casa', account: 'Amex' });
+        updateTransactionField(0, 'amount', 'not-a-number');
+        expect(transactions[0].amount).toBe(50); // unchanged
     });
 
     it('updates amount field as float', () => {
-        transactions = [{ date: new Date(), description: 'Test', amount: 50, type: 'expense', category: 'Casa', account: 'Amex' }];
+        transactions.push({ date: new Date(), description: 'Test', amount: 50, type: 'expense', category: 'Casa', account: 'Amex' });
         updateTransactionField(0, 'amount', '75.50');
         expect(transactions[0].amount).toBe(75.50);
     });
 
     it('updates category field', () => {
-        transactions = [{ date: new Date(), description: 'Test', amount: 50, type: 'expense', category: 'Casa', account: 'Amex' }];
+        transactions.push({ date: new Date(), description: 'Test', amount: 50, type: 'expense', category: 'Casa', account: 'Amex' });
         updateTransactionField(0, 'category', 'Mercado');
         expect(transactions[0].category).toBe('Mercado');
     });
@@ -273,10 +314,10 @@ describe('updateTransactionField', () => {
 describe('deleteTransaction', () => {
     it('removes transaction when confirmed', () => {
         vi.spyOn(window, 'confirm').mockReturnValue(true);
-        transactions = [
+        transactions.push(
             { date: new Date(), description: 'First', amount: 50, type: 'expense', category: 'Casa', account: 'Amex' },
             { date: new Date(), description: 'Second', amount: 100, type: 'expense', category: 'Casa', account: 'Amex' }
-        ];
+        );
         deleteTransaction(0);
         expect(transactions.length).toBe(1);
         expect(transactions[0].description).toBe('Second');
@@ -285,7 +326,7 @@ describe('deleteTransaction', () => {
 
     it('does not remove when cancelled', () => {
         vi.spyOn(window, 'confirm').mockReturnValue(false);
-        transactions = [{ date: new Date(), description: 'Test', amount: 50, type: 'expense', category: 'Casa', account: 'Amex' }];
+        transactions.push({ date: new Date(), description: 'Test', amount: 50, type: 'expense', category: 'Casa', account: 'Amex' });
         deleteTransaction(0);
         expect(transactions.length).toBe(1);
         window.confirm.mockRestore();
@@ -302,11 +343,11 @@ describe('deleteSelectedTransactions', () => {
 
     it('deletes selected transactions', () => {
         vi.spyOn(window, 'confirm').mockReturnValue(true);
-        transactions = [
+        transactions.push(
             { date: new Date(), description: 'First', amount: 50, type: 'expense', category: 'Casa', account: 'Amex' },
             { date: new Date(), description: 'Second', amount: 100, type: 'expense', category: 'Casa', account: 'Amex' },
             { date: new Date(), description: 'Third', amount: 150, type: 'expense', category: 'Casa', account: 'Amex' }
-        ];
+        );
         renderTransactions();
 
         // Check first and third checkboxes
@@ -324,9 +365,9 @@ describe('deleteSelectedTransactions', () => {
 describe('confirmClearAll', () => {
     it('clears all transactions when confirmed', () => {
         vi.spyOn(window, 'confirm').mockReturnValue(true);
-        transactions = [
+        transactions.push(
             { date: new Date(), description: 'Test', amount: 50, type: 'expense', category: 'Casa', account: 'Amex' }
-        ];
+        );
         confirmClearAll();
         expect(transactions.length).toBe(0);
         window.confirm.mockRestore();
@@ -334,11 +375,30 @@ describe('confirmClearAll', () => {
 
     it('preserves transactions when cancelled', () => {
         vi.spyOn(window, 'confirm').mockReturnValue(false);
-        transactions = [
+        transactions.push(
             { date: new Date(), description: 'Test', amount: 50, type: 'expense', category: 'Casa', account: 'Amex' }
-        ];
+        );
         confirmClearAll();
         expect(transactions.length).toBe(1);
         window.confirm.mockRestore();
+    });
+});
+
+describe('saveAndRefresh', () => {
+    it('saves data, renders transactions and updates summary', () => {
+        transactions.push(
+            { date: new Date(2025, 3, 12), description: 'Test', amount: 50, type: 'expense', category: 'Casa', account: 'Amex' }
+        );
+
+        saveAndRefresh();
+
+        // Verify data was saved to localStorage
+        const saved = JSON.parse(localStorage.getItem('transactions'));
+        expect(saved.length).toBe(1);
+        expect(saved[0].description).toBe('Test');
+
+        // Verify DOM was rendered
+        const rows = transactionsBody.querySelectorAll('tr');
+        expect(rows.length).toBe(1);
     });
 });

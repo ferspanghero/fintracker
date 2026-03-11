@@ -1,5 +1,5 @@
 // Parse date from various formats
-function parseDate(dateStr, fileType) {
+export function parseDate(dateStr, fileType) {
     // Try to parse various date formats
     let date;
     let parts;
@@ -14,7 +14,7 @@ function parseDate(dateStr, fileType) {
             year = parseInt(parts[0], 10);
             month = parseInt(parts[1], 10) - 1;
             day = parseInt(parts[2], 10);
-            
+
             date = new Date(year, month, day);
             break;
         case 'amex':
@@ -23,12 +23,12 @@ function parseDate(dateStr, fileType) {
             day = parseInt(parts[0], 10);
             month = parts[1];
             year = parseInt(parts[2], 10); // Assuming 20xx for year
-            
+
             const months = {
                 'Jan': 0, 'Feb': 1, 'Mar': 2, 'Apr': 3, 'May': 4, 'Jun': 5,
                 'Jul': 6, 'Aug': 7, 'Sep': 8, 'Oct': 9, 'Nov': 10, 'Dec': 11
             };
-            
+
             date = new Date(year, months[month], day);
             break;
         case 'mastercard':
@@ -39,7 +39,7 @@ function parseDate(dateStr, fileType) {
             month = parseInt(parts[0], 10) - 1;
             day = parseInt(parts[1], 10);
             year = parseInt(parts[2], 10);
-            
+
             date = new Date(year, month, day);
             break;
         case 'bradesco':
@@ -48,41 +48,49 @@ function parseDate(dateStr, fileType) {
             month = parseInt(parts[1], 10) - 1;
             day = parseInt(parts[0], 10);
             year = parseInt(parts[2], 10);
-            
+
             date = new Date(year, month, day);
             break;
         default:
             // If all else fails, try the built-in date parser
             date = new Date(dateStr);
     }
-    
+
     // Check if date is valid
     if (isNaN(date.getTime())) {
         console.error(`Invalid date: ${dateStr}`);
-        // Default to today if date is invalid
-        date = new Date();
+        return null;
     }
-    
+
     return date;
 }
 
-function dateStrInputToLocalDate(dateStrInput) {
+export function dateStrInputToLocalDate(dateStrInput) {
+    if (!dateStrInput) return null;
     // Format: YYYY-MM-DD (e.g., 2025-02-26)
     const [year, month, day] = dateStrInput.split('-');
-    return new Date(year, month - 1, day); // Uses local time (month is zero-indexed)
+    const date = new Date(parseInt(year, 10), parseInt(month, 10) - 1, parseInt(day, 10));
+    if (isNaN(date.getTime())) return null;
+    return date;
 }
 
 // Parse CSV line, handling quoted values
-function parseCSVLine(line) {
+export function parseCSVLine(line) {
     const result = [];
     let current = '';
     let inQuotes = false;
-    
+
     for (let i = 0; i < line.length; i++) {
         const char = line[i];
-        
+
         if (char === '"') {
-            inQuotes = !inQuotes;
+            if (inQuotes && i + 1 < line.length && line[i + 1] === '"') {
+                // Escaped quote ("") → emit single "
+                current += '"';
+                i++;
+            } else {
+                inQuotes = !inQuotes;
+            }
         } else if (char === ',' && !inQuotes) {
             result.push(current);
             current = '';
@@ -90,11 +98,22 @@ function parseCSVLine(line) {
             current += char;
         }
     }
-    
+
     result.push(current);
     return result;
 }
 
-function BRLtoCAD(amount) {
-    return amount * 0.25;
+export const BRL_TO_CAD_RATE = 0.25;
+
+export function BRLtoCAD(amount) {
+    return amount * BRL_TO_CAD_RATE;
+}
+
+export function escapeHTML(str) {
+    return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
 }

@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { parseDate, dateStrInputToLocalDate, parseCSVLine, BRLtoCAD, BRL_TO_CAD_RATE, escapeHTML } from '../js/utils.js';
 
 describe('parseDate', () => {
     describe('fintracker format (YYYY-MM-DD)', () => {
@@ -85,16 +86,24 @@ describe('parseDate', () => {
     });
 
     describe('invalid date handling', () => {
-        // TODO: BUG - parseDate returns new Date() for invalid dates instead of null.
-        // Callers cannot distinguish invalid dates from valid ones. This causes silent data corruption.
-        it('returns current date for invalid input (known bug)', () => {
-            const before = Date.now();
-            const result = parseDate('not-a-date', 'fintracker');
-            const after = Date.now();
-            expect(result).toBeInstanceOf(Date);
-            // The buggy behavior returns new Date() which is approximately "now"
-            expect(result.getTime()).toBeGreaterThanOrEqual(before - 1000);
-            expect(result.getTime()).toBeLessThanOrEqual(after + 1000);
+        it('returns null for invalid fintracker date', () => {
+            expect(parseDate('not-a-date', 'fintracker')).toBeNull();
+        });
+
+        it('returns null for invalid amex date', () => {
+            expect(parseDate('99 Xyz 2025', 'amex')).toBeNull();
+        });
+
+        it('returns null for invalid mastercard date', () => {
+            expect(parseDate('bad/date/here', 'mastercard')).toBeNull();
+        });
+
+        it('returns null for invalid bradesco date', () => {
+            expect(parseDate('not/a/date', 'bradesco')).toBeNull();
+        });
+
+        it('returns null for invalid default format', () => {
+            expect(parseDate('not-a-date', 'unknown')).toBeNull();
         });
     });
 });
@@ -117,6 +126,18 @@ describe('dateStrInputToLocalDate', () => {
         const result = dateStrInputToLocalDate('2025-12-31');
         expect(result.getMonth()).toBe(11);
         expect(result.getDate()).toBe(31);
+    });
+
+    it('returns null for empty string', () => {
+        expect(dateStrInputToLocalDate('')).toBeNull();
+    });
+
+    it('returns null for undefined', () => {
+        expect(dateStrInputToLocalDate(undefined)).toBeNull();
+    });
+
+    it('returns null for invalid date string', () => {
+        expect(dateStrInputToLocalDate('not-a-date')).toBeNull();
     });
 });
 
@@ -150,19 +171,29 @@ describe('parseCSVLine', () => {
         expect(result).toEqual(['2025-01-01', 'Starbucks, coffee', '12.50', 'expense']);
     });
 
-    // TODO: BUG - escaped quotes ("") inside quoted fields are dropped entirely
-    // instead of being converted to a single literal quote character.
-    // Input: "he said ""hello""" should produce: he said "hello"
-    // But currently produces: he said hello
-    it('drops escaped quotes (known bug)', () => {
+    it('handles escaped quotes inside quoted fields', () => {
         const result = parseCSVLine('"he said ""hello""",world');
-        // Buggy behavior: quotes are stripped
-        expect(result[0]).toBe('he said hello');
+        expect(result[0]).toBe('he said "hello"');
         expect(result[1]).toBe('world');
+    });
+
+    it('handles single escaped quote in quoted field', () => {
+        const result = parseCSVLine('"say ""hi""",test');
+        expect(result[0]).toBe('say "hi"');
+    });
+
+    it('handles consecutive escaped quotes', () => {
+        const result = parseCSVLine('"a""""b",c');
+        expect(result[0]).toBe('a""b');
     });
 });
 
 describe('BRLtoCAD', () => {
+    it('uses the exported BRL_TO_CAD_RATE constant', () => {
+        expect(BRL_TO_CAD_RATE).toBe(0.25);
+        expect(BRLtoCAD(100)).toBe(100 * BRL_TO_CAD_RATE);
+    });
+
     it('converts positive amount', () => {
         expect(BRLtoCAD(100)).toBe(25);
     });
@@ -177,5 +208,39 @@ describe('BRLtoCAD', () => {
 
     it('converts decimal amount', () => {
         expect(BRLtoCAD(10.50)).toBeCloseTo(2.625);
+    });
+});
+
+describe('escapeHTML', () => {
+    it('escapes ampersand', () => {
+        expect(escapeHTML('a&b')).toBe('a&amp;b');
+    });
+
+    it('escapes less-than', () => {
+        expect(escapeHTML('a<b')).toBe('a&lt;b');
+    });
+
+    it('escapes greater-than', () => {
+        expect(escapeHTML('a>b')).toBe('a&gt;b');
+    });
+
+    it('escapes double quotes', () => {
+        expect(escapeHTML('a"b')).toBe('a&quot;b');
+    });
+
+    it('escapes single quotes', () => {
+        expect(escapeHTML("a'b")).toBe('a&#39;b');
+    });
+
+    it('escapes multiple special characters', () => {
+        expect(escapeHTML('<script>alert("xss")</script>')).toBe('&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;');
+    });
+
+    it('returns empty string unchanged', () => {
+        expect(escapeHTML('')).toBe('');
+    });
+
+    it('returns safe string unchanged', () => {
+        expect(escapeHTML('hello world')).toBe('hello world');
     });
 });

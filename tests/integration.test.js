@@ -1,4 +1,12 @@
 import { describe, it, expect, vi } from 'vitest';
+import { parseCSV, convertTransactionsToCSV } from '../js/import-export.js';
+import { getFilteredTransactions } from '../js/transactions.js';
+import { getTransactionKey } from '../js/import-export.js';
+import { transactions, currentFilter, currentSort } from '../js/state.js';
+import { defaultCategories } from '../js/categories.js';
+import { transactionsBody, dateRangeSelect } from '../js/dom.js';
+import { BRLtoCAD } from '../js/utils.js';
+import { init } from '../js/main.js';
 
 describe('Integration: CSV import and parsing', () => {
     it('imports Amex CSV and populates transactions', () => {
@@ -10,19 +18,19 @@ describe('Integration: CSV import and parsing', () => {
         ].join('\n');
 
         const result = parseCSV(csv, 'amex');
-        expect(result.length).toBe(3);
+        expect(result.transactions.length).toBe(3);
 
         // Verify first transaction
-        expect(result[0].description).toBe('STARBUCKS COFFEE');
-        expect(result[0].type).toBe('expense');
-        expect(result[0].amount).toBe(12.50);
+        expect(result.transactions[0].description).toBe('STARBUCKS COFFEE');
+        expect(result.transactions[0].type).toBe('expense');
+        expect(result.transactions[0].amount).toBe(12.50);
 
         // Verify payment (income)
-        expect(result[1].type).toBe('income');
-        expect(result[1].amount).toBe(500);
+        expect(result.transactions[1].type).toBe('income');
+        expect(result.transactions[1].amount).toBe(500);
 
         // Verify categories were assigned
-        result.forEach(txn => {
+        result.transactions.forEach(txn => {
             expect(txn.category).toBeTruthy();
         });
     });
@@ -35,10 +43,10 @@ describe('Integration: CSV import and parsing', () => {
         ].join('\n');
 
         const result = parseCSV(csv, 'mastercard');
-        expect(result.length).toBe(2);
-        expect(result[0].type).toBe('expense');
-        expect(result[0].description).toContain('JOHN DOE');
-        expect(result[1].type).toBe('income');
+        expect(result.transactions.length).toBe(2);
+        expect(result.transactions[0].type).toBe('expense');
+        expect(result.transactions[0].description).toContain('JOHN DOE');
+        expect(result.transactions[1].type).toBe('income');
     });
 
     it('imports TD CSV (no header)', () => {
@@ -48,9 +56,9 @@ describe('Integration: CSV import and parsing', () => {
         ].join('\n');
 
         const result = parseCSV(csv, 'td');
-        expect(result.length).toBe(2);
-        expect(result[0].type).toBe('expense');
-        expect(result[1].type).toBe('income');
+        expect(result.transactions.length).toBe(2);
+        expect(result.transactions[0].type).toBe('expense');
+        expect(result.transactions[1].type).toBe('income');
     });
 
     it('imports Bradesco CSV with semicolons and BRL conversion', () => {
@@ -63,10 +71,10 @@ describe('Integration: CSV import and parsing', () => {
 
         const result = parseCSV(csv, 'bradesco');
         // SALDO ANTERIOR has 0 credit and space for debit, should be skipped
-        expect(result.length).toBe(2);
-        expect(result[0].type).toBe('income');
-        expect(result[0].amount).toBeCloseTo(BRLtoCAD(5000));
-        expect(result[1].type).toBe('expense');
+        expect(result.transactions.length).toBe(2);
+        expect(result.transactions[0].type).toBe('income');
+        expect(result.transactions[0].amount).toBeCloseTo(BRLtoCAD(5000));
+        expect(result.transactions[1].type).toBe('expense');
     });
 });
 
@@ -85,18 +93,18 @@ describe('Integration: export then re-import round-trip', () => {
         const csvContent = csv.replace(/^\uFEFF/, '');
         const reimported = parseCSV(csvContent, 'fintracker');
 
-        expect(reimported.length).toBe(2);
+        expect(reimported.transactions.length).toBe(2);
 
         // Verify data matches
-        expect(reimported[0].description).toBe('Coffee Shop');
-        expect(reimported[0].amount).toBe(5.50);
-        expect(reimported[0].type).toBe('expense');
-        expect(reimported[0].category).toBe('Alimentação');
-        expect(reimported[0].account).toBe('Amex');
+        expect(reimported.transactions[0].description).toBe('Coffee Shop');
+        expect(reimported.transactions[0].amount).toBe(5.50);
+        expect(reimported.transactions[0].type).toBe('expense');
+        expect(reimported.transactions[0].category).toBe('Alimentação');
+        expect(reimported.transactions[0].account).toBe('Amex');
 
-        expect(reimported[1].description).toBe('Salary');
-        expect(reimported[1].amount).toBe(3000);
-        expect(reimported[1].type).toBe('income');
+        expect(reimported.transactions[1].description).toBe('Salary');
+        expect(reimported.transactions[1].amount).toBe(3000);
+        expect(reimported.transactions[1].type).toBe('income');
     });
 });
 
@@ -112,9 +120,9 @@ describe('Integration: duplicate detection', () => {
 
     it('import deduplication works via key set', () => {
         // Simulate what processFiles does for duplicate detection
-        transactions = [
+        transactions.push(
             { date: new Date(2025, 3, 12), description: 'Existing', amount: 50, type: 'expense', account: 'Amex' }
-        ];
+        );
         const transactionKeys = new Set(transactions.map(getTransactionKey));
 
         const imported = [
@@ -150,7 +158,8 @@ describe('Integration: filter after import', () => {
             '15 Jun 2025,15 Jun 2025,June Purchase,30.00'
         ].join('\n');
 
-        transactions = parseCSV(csv, 'amex');
+        const parsed = parseCSV(csv, 'amex');
+        transactions.push(...parsed.transactions);
         expect(transactions.length).toBe(3);
 
         // Filter to March-April only
@@ -168,7 +177,8 @@ describe('Integration: filter after import', () => {
             '15 Jan 2025,15 Jan 2025,COSTCO WHOLESALE,150.00'
         ].join('\n');
 
-        transactions = parseCSV(csv, 'amex');
+        const parsed = parseCSV(csv, 'amex');
+        transactions.push(...parsed.transactions);
         currentFilter.textFilter = 'starbucks';
         const filtered = getFilteredTransactions();
         expect(filtered.length).toBe(1);
@@ -196,5 +206,31 @@ describe('Integration: full init cycle', () => {
         // Verify DOM rendered
         const rows = transactionsBody.querySelectorAll('tr');
         expect(rows.length).toBe(1);
+    });
+
+    it('applies browser-restored date range dropdown on init', () => {
+        // Simulate browser restoring dropdown to "last-month" after refresh
+        dateRangeSelect.value = 'last-month';
+
+        // Pre-populate with a transaction from 2 years ago (outside last-month range)
+        const oldDate = new Date(2023, 0, 15);
+        const savedTxns = [
+            { date: oldDate.toISOString(), description: 'Old', amount: 10, type: 'expense', category: 'Casa', account: 'Amex' }
+        ];
+        localStorage.setItem('transactions', JSON.stringify(savedTxns));
+        localStorage.setItem('categories', JSON.stringify(defaultCategories));
+
+        init();
+
+        // The old transaction should be filtered out by the "last-month" range
+        expect(currentFilter.dateRange).toBe('last-month');
+        expect(currentFilter.startDate).not.toBeNull();
+        const rows = transactionsBody.querySelectorAll('tr');
+        expect(rows.length).toBe(0);
+    });
+
+    it('defaults to date ascending sort', () => {
+        expect(currentSort.field).toBe('date');
+        expect(currentSort.direction).toBe('asc');
     });
 });

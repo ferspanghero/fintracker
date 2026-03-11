@@ -36,7 +36,9 @@ export const HTML_FIXTURE = `
                     <option value="all">All Time</option>
                     <option value="current-month">Current Month</option>
                     <option value="last-month">Last Month</option>
+                    <option value="two-months-ago">2 Months Ago</option>
                     <option value="current-year">Current Year</option>
+                    <option value="last-year">Last Year</option>
                     <option value="custom">Custom Range</option>
                 </select>
             </div>

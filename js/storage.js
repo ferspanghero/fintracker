@@ -1,54 +1,34 @@
+import { transactions } from './state.js';
+import { categories } from './categories.js';
 // Load data from local storage
-function loadData() {
+export function loadData() {
     // Load transactions
     const savedTransactions = localStorage.getItem('transactions');
     if (savedTransactions) {
-        transactions = JSON.parse(savedTransactions);
-        
+        const parsed = JSON.parse(savedTransactions);
+        transactions.length = 0;
+
         // Convert date strings to Date objects
-        transactions.forEach(transaction => {
+        parsed.forEach(transaction => {
             transaction.date = new Date(transaction.date);
+            transactions.push(transaction);
         });
     }
-    
+
     // Load categories
     const savedCategories = localStorage.getItem('categories');
     if (savedCategories) {
-        categories = JSON.parse(savedCategories);
+        Object.assign(categories, JSON.parse(savedCategories));
     }
 }
 
 // Save data to local storage
-function saveData() {
-    localStorage.setItem('transactions', JSON.stringify(transactions));
-    localStorage.setItem('categories', JSON.stringify(categories));
-    
-    // Also save to monthly files
-    saveToMonthlyFiles();
-}
-
-// Save transactions to monthly files
-function saveToMonthlyFiles() {
-    // Group transactions by month
-    const transactionsByMonth = {};
-    
-    transactions.forEach(transaction => {
-        const date = new Date(transaction.date);
-        const monthKey = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`;
-        
-        if (!transactionsByMonth[monthKey]) {
-            transactionsByMonth[monthKey] = [];
-        }
-        
-        transactionsByMonth[monthKey].push(transaction);
-    });
-    
-    // Save each month's transactions to a file
-    for (const [month, monthTransactions] of Object.entries(transactionsByMonth)) {
-        const csvContent = convertTransactionsToCSV(monthTransactions);
-        
-        // In a real application, we would save this to a file
-        // Since we're in a browser environment, we'll simulate this by storing in localStorage
-        localStorage.setItem(`transactions_${month}.csv`, csvContent);
+export function saveData() {
+    try {
+        localStorage.setItem('transactions', JSON.stringify(transactions));
+        localStorage.setItem('categories', JSON.stringify(categories));
+    } catch (e) {
+        console.error('Failed to save data to localStorage:', e);
+        alert('Could not save data. LocalStorage may be full or disabled.');
     }
 }

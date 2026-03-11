@@ -1,35 +1,70 @@
 // DOM Elements
-const importBtn = document.getElementById('import-btn');
-const fileInput = document.getElementById('csv-file');
-const fileTypeSelect = document.getElementById('file-type');
-const dateRangeSelect = document.getElementById('date-range');
-const customDateContainer = document.getElementById('custom-date-container');
-const startDateInput = document.getElementById('start-date');
-const endDateInput = document.getElementById('end-date');
-const applyDateFilterBtn = document.getElementById('apply-date-filter');
-const categorySelect = document.getElementById('category-select');
-const addTransactionBtn = document.getElementById('add-transaction-btn');
-const exportCsvBtn = document.getElementById('export-csv-btn');
-const clearAllBtn = document.getElementById('clear-all-btn');
-const transactionsTable = document.getElementById('transactions-table');
-const transactionsBody = document.getElementById('transactions-body');
-const totalIncomeElement = document.getElementById('total-income');
-const totalExpensesElement = document.getElementById('total-expenses');
-const netAmountElement = document.getElementById('net-amount');
+export let importBtn;
+export let fileInput;
+export let fileTypeSelect;
+export let dateRangeSelect;
+export let customDateContainer;
+export let startDateInput;
+export let endDateInput;
+export let applyDateFilterBtn;
+export let categorySelect;
+export let addTransactionBtn;
+export let exportCsvBtn;
+export let clearAllBtn;
+export let transactionsTable;
+export let transactionsBody;
+export let totalIncomeElement;
+export let totalExpensesElement;
+export let netAmountElement;
 
 // Modal Elements
-const addTransactionModal = document.getElementById('add-transaction-modal');
-const transactionForm = document.getElementById('transaction-form');
-const transactionDateInput = document.getElementById('transaction-date');
-const transactionDescriptionInput = document.getElementById('transaction-description');
-const transactionAmountInput = document.getElementById('transaction-amount');
-const transactionCategorySelect = document.getElementById('transaction-category');
-const transactionAccountSelect = document.getElementById('transaction-account');
-const newCategoryGroup = document.getElementById('new-category-group');
-const newCategoryNameInput = document.getElementById('new-category-name');
-const closeButtons = document.querySelectorAll('.close');
+export let addTransactionModal;
+export let transactionForm;
+export let transactionDateInput;
+export let transactionDescriptionInput;
+export let transactionAmountInput;
+export let transactionCategorySelect;
+export let transactionAccountSelect;
+export let newCategoryGroup;
+export let newCategoryNameInput;
+export let closeButtons;
 
 // New filter elements
-const textFilterInput = document.getElementById('text-filter');
-const deleteSelectedBtn = document.getElementById('delete-selected-btn');
-const selectAllCheckbox = document.getElementById('select-all-checkbox');
+export let textFilterInput;
+export let deleteSelectedBtn;
+export let selectAllCheckbox;
+
+export function refreshDom() {
+    importBtn = document.getElementById('import-btn');
+    fileInput = document.getElementById('csv-file');
+    fileTypeSelect = document.getElementById('file-type');
+    dateRangeSelect = document.getElementById('date-range');
+    customDateContainer = document.getElementById('custom-date-container');
+    startDateInput = document.getElementById('start-date');
+    endDateInput = document.getElementById('end-date');
+    applyDateFilterBtn = document.getElementById('apply-date-filter');
+    categorySelect = document.getElementById('category-select');
+    addTransactionBtn = document.getElementById('add-transaction-btn');
+    exportCsvBtn = document.getElementById('export-csv-btn');
+    clearAllBtn = document.getElementById('clear-all-btn');
+    transactionsTable = document.getElementById('transactions-table');
+    transactionsBody = document.getElementById('transactions-body');
+    totalIncomeElement = document.getElementById('total-income');
+    totalExpensesElement = document.getElementById('total-expenses');
+    netAmountElement = document.getElementById('net-amount');
+    addTransactionModal = document.getElementById('add-transaction-modal');
+    transactionForm = document.getElementById('transaction-form');
+    transactionDateInput = document.getElementById('transaction-date');
+    transactionDescriptionInput = document.getElementById('transaction-description');
+    transactionAmountInput = document.getElementById('transaction-amount');
+    transactionCategorySelect = document.getElementById('transaction-category');
+    transactionAccountSelect = document.getElementById('transaction-account');
+    newCategoryGroup = document.getElementById('new-category-group');
+    newCategoryNameInput = document.getElementById('new-category-name');
+    closeButtons = document.querySelectorAll('.close');
+    textFilterInput = document.getElementById('text-filter');
+    deleteSelectedBtn = document.getElementById('delete-selected-btn');
+    selectAllCheckbox = document.getElementById('select-all-checkbox');
+}
+
+refreshDom();

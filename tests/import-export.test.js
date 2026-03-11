@@ -1,4 +1,14 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import {
+    detectFileType, parseFinTrackerTransaction, parseAmexTransaction,
+    parseMastercardTransaction, parseSimpliiTransaction, parseTDTransaction,
+    parseBradescoTransaction, parseCSV, convertTransactionsToCSV,
+    handleImport, processFiles, exportToCSV
+} from '../js/import-export.js';
+import { BRLtoCAD } from '../js/utils.js';
+import { transactions, currentFilter } from '../js/state.js';
+import { categories } from '../js/categories.js';
+import { fileInput, fileTypeSelect, importBtn } from '../js/dom.js';
 
 describe('detectFileType', () => {
     it('detects fintracker format', () => {
@@ -72,6 +82,10 @@ describe('parseFinTrackerTransaction', () => {
         expect(parseFinTrackerTransaction('2025-04-12,Groceries,Mercado', 'fintracker')).toBeNull();
     });
 
+    it('returns null for invalid date', () => {
+        expect(parseFinTrackerTransaction('bad-date,Test,Casa,Amex,50,expense', 'fintracker')).toBeNull();
+    });
+
     it('adds new category to categories array', () => {
         parseFinTrackerTransaction(
             '2025-04-12,Test,CustomCat,Amex,50.00,expense', 'fintracker'
@@ -79,13 +93,12 @@ describe('parseFinTrackerTransaction', () => {
         expect(categories.expense).toContain('CustomCat');
     });
 
-    // TODO: BUG - temporal dead zone: 'type' is referenced on line 185 (in the fallback
-    // for empty category) but const-declared on line 188. When parts[2] is empty/falsy,
-    // this throws ReferenceError.
-    it('throws when category is empty (known TDZ bug)', () => {
-        expect(() => {
-            parseFinTrackerTransaction('2025-04-12,COSTCO,,Simplii,100.00,expense', 'fintracker');
-        }).toThrow();
+    it('auto-categorizes when category is empty', () => {
+        const result = parseFinTrackerTransaction('2025-04-12,COSTCO,,Simplii,100.00,expense', 'fintracker');
+        expect(result).not.toBeNull();
+        expect(result.description).toBe('COSTCO');
+        expect(result.category).toBeTruthy();
+        expect(result.type).toBe('expense');
     });
 });
 
@@ -106,6 +119,10 @@ describe('parseAmexTransaction', () => {
 
     it('returns null for too few fields', () => {
         expect(parseAmexTransaction('28 Feb 2025,desc', 'amex')).toBeNull();
+    });
+
+    it('returns null for invalid date', () => {
+        expect(parseAmexTransaction('99 Xyz 2025,99 Xyz 2025,TEST,10', 'amex')).toBeNull();
     });
 
     it('auto-categorizes based on description', () => {
@@ -141,6 +158,10 @@ describe('parseMastercardTransaction', () => {
     it('returns null for too few fields', () => {
         expect(parseMastercardTransaction('desc,type,name', 'mastercard')).toBeNull();
     });
+
+    it('returns null for invalid date', () => {
+        expect(parseMastercardTransaction('TEST,PURCHASE,JOHN,bad/date,10:00,50', 'mastercard')).toBeNull();
+    });
 });
 
 describe('parseSimpliiTransaction', () => {
@@ -159,6 +180,10 @@ describe('parseSimpliiTransaction', () => {
 
     it('returns null for too few fields', () => {
         expect(parseSimpliiTransaction('2/5/2025, desc', 'simplii')).toBeNull();
+    });
+
+    it('returns null for invalid date', () => {
+        expect(parseSimpliiTransaction('bad/date, STORE, 50.00, ', 'simplii')).toBeNull();
     });
 });
 
@@ -182,6 +207,10 @@ describe('parseTDTransaction', () => {
 
     it('returns null for too few fields', () => {
         expect(parseTDTransaction('1/1/2025,desc', 'td')).toBeNull();
+    });
+
+    it('returns null for invalid date', () => {
+        expect(parseTDTransaction('bad/date,TEST,5.50,,1000', 'td')).toBeNull();
     });
 });
 
@@ -237,11 +266,22 @@ describe('parseBradescoTransaction', () => {
         expect(parseBradescoTransaction('26/02/2025;desc', 'bradesco')).toBeNull();
     });
 
+    it('returns null for invalid date', () => {
+        expect(parseBradescoTransaction('bad/date;desc;123;1.000,00;;5.000,00', 'bradesco')).toBeNull();
+    });
+
     it('handles Brazilian number format correctly', () => {
         const result = parseBradescoTransaction(
             '26/02/2025;desc;123;10.500,75;;50.000,00', 'bradesco'
         );
         expect(result.amount).toBeCloseTo(BRLtoCAD(10500.75));
+    });
+
+    it('handles amounts with multiple thousand separators (>= 1M BRL)', () => {
+        const result = parseBradescoTransaction(
+            '26/02/2025;desc;123;1.000.500,75;;5.000.000,00', 'bradesco'
+        );
+        expect(result.amount).toBeCloseTo(BRLtoCAD(1000500.75));
     });
 });
 
@@ -249,53 +289,60 @@ describe('parseCSV', () => {
     it('auto-detects fintracker format', () => {
         const csv = 'Date,Description,Category,Account,Amount,Type\n2025-04-12,Test,Casa,Amex,50,expense';
         const result = parseCSV(csv, 'auto');
-        expect(result.length).toBe(1);
-        expect(result[0].description).toBe('Test');
+        expect(result.transactions.length).toBe(1);
+        expect(result.transactions[0].description).toBe('Test');
     });
 
     it('auto-detects amex format', () => {
         const csv = 'Date,Date Processed,Description,Amount\n28 Feb 2025,28 Feb 2025,STARBUCKS,12.50';
         const result = parseCSV(csv, 'auto');
-        expect(result.length).toBe(1);
+        expect(result.transactions.length).toBe(1);
     });
 
     it('uses explicit fileType', () => {
         const csv = 'Date,Date Processed,Description,Amount\n28 Feb 2025,28 Feb 2025,STARBUCKS,12.50';
         const result = parseCSV(csv, 'amex');
-        expect(result.length).toBe(1);
+        expect(result.transactions.length).toBe(1);
     });
 
     it('TD starts from row 0 (no header)', () => {
         const csv = '1/1/2025,TIM HORTONS,5.50,,1000.00';
         const result = parseCSV(csv, 'td');
-        expect(result.length).toBe(1);
+        expect(result.transactions.length).toBe(1);
     });
 
     it('parses simplii format via parseCSV', () => {
         const csv = 'Date, Transaction Details, Funds Out, Funds In\n2/5/2025, GROCERY STORE, 50.00, ';
         const result = parseCSV(csv, 'simplii');
-        expect(result.length).toBe(1);
-        expect(result[0].account).toBe('Simplii');
+        expect(result.transactions.length).toBe(1);
+        expect(result.transactions[0].account).toBe('Simplii');
     });
 
     it('skips empty lines', () => {
         const csv = 'Date,Date Processed,Description,Amount\n28 Feb 2025,28 Feb 2025,TEST,10\n\n28 Feb 2025,28 Feb 2025,TEST2,20';
         const result = parseCSV(csv, 'amex');
-        expect(result.length).toBe(2);
+        expect(result.transactions.length).toBe(2);
     });
 
-    it('catches parse errors and continues', () => {
-        // Line with too few fields mixed with valid line
-        const csv = 'Date,Date Processed,Description,Amount\nbad line\n28 Feb 2025,28 Feb 2025,TEST,10';
+    it('catches parse errors and returns error count', () => {
+        // fintracker line with invalid type 'badtype' triggers throw in categorizeTransaction
+        const csv = 'Date,Description,Category,Account,Amount,Type\n2025-01-01,Test,,Amex,10,badtype\n2025-01-01,Valid,Casa,Amex,10,expense';
+        const result = parseCSV(csv, 'fintracker');
+        expect(result.transactions.length).toBe(1);
+        expect(result.errorCount).toBe(1);
+    });
+
+    it('returns zero errorCount for clean CSV', () => {
+        const csv = 'Date,Date Processed,Description,Amount\n28 Feb 2025,28 Feb 2025,TEST,10';
         const result = parseCSV(csv, 'amex');
-        expect(result.length).toBe(1);
+        expect(result.errorCount).toBe(0);
     });
 
     it('throws for unknown file type in explicit mode', () => {
         const csv = 'header\ndata';
-        // The error is caught inside the loop, so it returns empty array
         const result = parseCSV(csv, 'nonexistent');
-        expect(result.length).toBe(0);
+        expect(result.transactions.length).toBe(0);
+        expect(result.errorCount).toBe(1);
     });
 });
 
@@ -345,20 +392,39 @@ describe('convertTransactionsToCSV', () => {
         // BOM+header + 2 data rows
         expect(lines.length).toBe(3);
     });
+
+    it('escapes commas in category and account fields', () => {
+        const csv = convertTransactionsToCSV([makeTxn({ category: 'Food, Drink', account: 'My, Account' })]);
+        expect(csv).toContain('"Food, Drink"');
+        expect(csv).toContain('"My, Account"');
+    });
+
+    it('escapes quotes in category and account fields', () => {
+        const csv = convertTransactionsToCSV([makeTxn({ category: 'Say "hi"', account: 'Acc "1"' })]);
+        expect(csv).toContain('"Say ""hi"""');
+        expect(csv).toContain('"Acc ""1"""');
+    });
 });
 
 describe('handleImport', () => {
     beforeEach(() => {
-        vi.spyOn(globalThis, 'alert').mockImplementation(() => {});
+        vi.spyOn(window, 'alert').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
     });
 
     it('alerts when no files selected', () => {
         handleImport();
-        expect(alert).toHaveBeenCalledWith('Please select at least one file to import.');
+        expect(window.alert).toHaveBeenCalledWith('Please select at least one file to import.');
     });
 
-    it('disables import button and calls processFiles', () => {
-        const spy = vi.spyOn(globalThis, 'processFiles').mockImplementation(() => {});
+    it('disables import button and starts processing', () => {
+        const OriginalFileReader = globalThis.FileReader;
+        const mock = { readAsText: vi.fn(), onload: null, onerror: null };
+        globalThis.FileReader = function() { return mock; };
+
         // Mock fileInput.files with a non-empty FileList-like object
         Object.defineProperty(fileInput, 'files', {
             value: { length: 1, 0: { name: 'test.csv' } },
@@ -369,21 +435,18 @@ describe('handleImport', () => {
         handleImport();
         expect(importBtn.disabled).toBe(true);
         expect(importBtn.textContent).toBe('Importing...');
-        expect(spy).toHaveBeenCalledWith(fileInput.files, 0, 0, 0);
-        spy.mockRestore();
+        expect(mock.readAsText).toHaveBeenCalled();
+
+        globalThis.FileReader = OriginalFileReader;
     });
 });
 
 describe('processFiles', () => {
     let OriginalFileReader;
-    let alertSpy, saveDataSpy, renderSpy, summarySpy;
 
     beforeEach(() => {
         OriginalFileReader = globalThis.FileReader;
-        alertSpy = vi.spyOn(globalThis, 'alert').mockImplementation(() => {});
-        saveDataSpy = vi.spyOn(globalThis, 'saveData').mockImplementation(() => {});
-        renderSpy = vi.spyOn(globalThis, 'renderTransactions').mockImplementation(() => {});
-        summarySpy = vi.spyOn(globalThis, 'updateSummary').mockImplementation(() => {});
+        vi.spyOn(window, 'alert').mockImplementation(() => {});
     });
 
     afterEach(() => {
@@ -402,16 +465,12 @@ describe('processFiles', () => {
         processFiles({ length: 0 }, 0, 5, 2);
         expect(importBtn.disabled).toBe(false);
         expect(importBtn.textContent).toBe('Import');
-        expect(saveDataSpy).toHaveBeenCalled();
-        expect(renderSpy).toHaveBeenCalled();
-        expect(summarySpy).toHaveBeenCalled();
-        expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('5 transactions'));
+        expect(window.alert).toHaveBeenCalledWith(expect.stringContaining('5 transactions'));
     });
 
     it('shows no-import alert when zero imported', () => {
         processFiles({ length: 0 }, 0, 0, 3);
-        expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('No transactions'));
-        expect(saveDataSpy).not.toHaveBeenCalled();
+        expect(window.alert).toHaveBeenCalledWith(expect.stringContaining('No transactions'));
     });
 
     it('reads file and processes valid CSV content', () => {
@@ -429,14 +488,14 @@ describe('processFiles', () => {
 
         expect(transactions.length).toBe(1);
         expect(transactions[0].description).toBe('STARBUCKS');
-        expect(alertSpy).toHaveBeenCalled();
+        expect(window.alert).toHaveBeenCalled();
     });
 
     it('detects duplicates and skips them', () => {
         fileTypeSelect.value = 'amex';
-        transactions = [
+        transactions.push(
             { date: new Date(2025, 1, 28), description: 'STARBUCKS', amount: 12.50, type: 'expense', category: 'Alimentação', account: 'Amex' }
-        ];
+        );
 
         const csvContent = 'Date,Date Processed,Description,Amount\n28 Feb 2025,28 Feb 2025,STARBUCKS,12.50';
         const mock = mockFileReader();
@@ -446,23 +505,18 @@ describe('processFiles', () => {
         mock.onload({ target: { result: csvContent } });
 
         expect(transactions.length).toBe(1);
-        expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('No transactions'));
+        expect(window.alert).toHaveBeenCalledWith(expect.stringContaining('No transactions'));
     });
 
     it('handles parse errors gracefully', () => {
         fileTypeSelect.value = 'amex';
         const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-        const origParseCSV = globalThis.parseCSV;
-        try {
-            globalThis.parseCSV = () => { throw new Error('Parse failure'); };
-            const mock = mockFileReader();
-            const files = { length: 1, 0: { name: 'bad.csv' } };
-            processFiles(files, 0, 0, 0);
-            mock.onload({ target: { result: 'bad content' } });
-            expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('bad.csv'));
-        } finally {
-            globalThis.parseCSV = origParseCSV;
-        }
+        const mock = mockFileReader();
+        const files = { length: 1, 0: { name: 'bad.csv' } };
+        processFiles(files, 0, 0, 0);
+        // Pass null content to trigger TypeError in parseCSV (null.split)
+        mock.onload({ target: { result: null } });
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('bad.csv'));
     });
 
     it('handles empty parse results', () => {
@@ -488,7 +542,30 @@ describe('processFiles', () => {
         mock.onerror({ target: { error: new Error('read error') } });
 
         expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('error.csv'), expect.anything());
-        expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('error.csv'));
+        expect(window.alert).toHaveBeenCalledWith(expect.stringContaining('error.csv'));
+    });
+
+    it('preserves totalDuplicates through reader.onerror', () => {
+        const mock = mockFileReader();
+        // Start with 5 duplicates already counted
+        const files = { length: 1, 0: { name: 'error.csv' } };
+        processFiles(files, 0, 3, 5);
+        mock.onerror({ target: { error: new Error('read error') } });
+
+        // After onerror completes (files exhausted), the alert should show the 5 duplicates
+        expect(window.alert).toHaveBeenCalledWith(expect.stringContaining('5 duplicates'));
+    });
+
+    it('reports error count in final alert', () => {
+        fileTypeSelect.value = 'fintracker';
+        const mock = mockFileReader();
+        // fintracker line with invalid type 'badtype' triggers throw in categorizeTransaction
+        const csvContent = 'Date,Description,Category,Account,Amount,Type\n2025-01-01,Test,,Amex,10,badtype\n2025-01-01,Valid,Casa,Amex,10,expense';
+        const files = { length: 1, 0: { name: 'mixed.csv' } };
+        processFiles(files, 0, 0, 0, 0);
+        mock.onload({ target: { result: csvContent } });
+
+        expect(window.alert).toHaveBeenCalledWith(expect.stringContaining('1 error'));
     });
 
     it('updates button text to show progress', () => {
@@ -523,6 +600,7 @@ describe('exportToCSV', () => {
 
     afterEach(() => {
         Document.prototype.createElement = origCreateElement;
+        vi.restoreAllMocks();
     });
 
     function setupExportMocks() {
@@ -542,9 +620,9 @@ describe('exportToCSV', () => {
     }
 
     it('creates a download with correct filename and triggers click', () => {
-        transactions = [
+        transactions.push(
             { date: new Date(2025, 3, 12), description: 'Test', amount: 50, type: 'expense', category: 'Casa', account: 'Amex' }
-        ];
+        );
         const getLink = setupExportMocks();
 
         exportToCSV();
@@ -557,9 +635,9 @@ describe('exportToCSV', () => {
     });
 
     it('uses currentFilter.startDate for filename when set', () => {
-        transactions = [
+        transactions.push(
             { date: new Date(2025, 3, 12), description: 'Test', amount: 50, type: 'expense', category: 'Casa', account: 'Amex' }
-        ];
+        );
         currentFilter.startDate = new Date(2024, 11, 1);
         const getLink = setupExportMocks();
 

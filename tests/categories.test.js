@@ -1,4 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
+import { defaultCategories, categories, categoryKeywords, categorizeTransaction, populateCategoryDropdowns, populateTransactionCategorySelect, handleCategorySelectChange, handleCategoryFilterChange } from '../js/categories.js';
+import { categorySelect, transactionCategorySelect, newCategoryGroup } from '../js/dom.js';
+import { currentFilter } from '../js/state.js';
 
 describe('static data', () => {
     it('defaultCategories has expense and income keys', () => {
