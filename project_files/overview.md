@@ -30,8 +30,8 @@ Persist + Re-render (storage.js → ui.js)
 - `currentFilter` — `{ dateRange, startDate, endDate, category, textFilter }`
 
 **Pure logic** (no DOM dependencies):
-- `category-engine.js` — keyword-based auto-categorization. Maps description substrings to categories (Portuguese). Also used standalone by the benchmark tool.
-- `utils.js` — CSV line tokenizer (handles quoting), BRL-to-CAD conversion, HTML escaping.
+- `category-engine.js` — keyword-based auto-categorization. Exposes `loadCategoryKeywords(path?)`, which merges generic keywords with optional personal overrides loaded from a gitignored file, and `categorizeTransaction(description, type, keywords)`, which scans a pre-built map. Holds no module-level state — callers (the UI layer and the benchmark tool) pass the path they want and hold the resulting map.
+- `utils.js` — CSV line tokenizer (handles quoting), currency conversion, HTML escaping.
 - `parsers/` — one module per bank format, each owning its own line splitting, date parsing, and field extraction. Connected via a registry (`parsers/index.js`).
 
 **DOM layer**:
@@ -91,13 +91,13 @@ Adding a new bank format: create a parser file, add one import to `parsers/index
 
 ## Auto-Categorization
 
-`categorizeTransaction(description, type)` in `category-engine.js`:
+`categorizeTransaction(description, type, categoryKeywords)` in `category-engine.js`:
 1. Normalizes description to lowercase
 2. Checks each keyword in `categoryKeywords[type]` for substring match
-3. Returns first match, or `'Sem Categoria'` if none
-4. Special case: income with no income match checks expense keywords → returns `'Reembolso'`
+3. Returns the first matching category, or the `UNCATEGORIZED` fallback if none match
+4. Income fallback: if an income description matches no income keyword but matches an expense keyword, it's routed to the refund category
 
-Categories are in Brazilian Portuguese. Keywords include merchant names, English terms, and Portuguese terms.
+The keyword map itself is produced by `loadCategoryKeywords(path?)`, which merges the generic keywords shipped with the engine with optional personal overrides dynamically imported from `path`. Missing/unreadable files are swallowed so fresh clones work with zero config. Personal entries are prepended per category so they win under first-match-wins. `categories.js` calls the loader once at module load with a constant pointing to a gitignored file; the benchmark tool does the same with the same path. A committed example template can be copied to the gitignored name to add local merchants, banks, or other entries you'd rather not publish.
 
 ## Transaction Object Shape
 

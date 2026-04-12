@@ -56,8 +56,6 @@ describe('categorizeTransaction', () => {
     });
 
     it('matches expense Lazer keyword', () => {
-        // 'subscription' also appears in Tarifa keywords, which comes first in iteration order.
-        // 'netflix' is unique to Lazer, so use that alone.
         expect(categorizeTransaction('NETFLIX movie', 'expense')).toBe('Lazer');
     });
 
@@ -94,9 +92,9 @@ describe('categorizeTransaction', () => {
     });
 
     it('returns first matching category (priority order)', () => {
-        // 'subscription' appears in both Tarifa and Lazer keywords
-        const result = categorizeTransaction('subscription service', 'expense');
-        expect(['Tarifa', 'Lazer']).toContain(result);
+        // 'student loan' appears in both Dívida and Empréstimo keywords;
+        // Dívida comes first in iteration order, so it wins.
+        expect(categorizeTransaction('student loan payment', 'expense')).toBe('Dívida');
     });
 });
 

@@ -1,5 +1,11 @@
-// Pure categorization data and logic — no DOM dependencies.
-// This module is imported by categories.js (UI layer) and by the benchmark utility.
+// Pure categorization data and logic — no DOM dependencies, no module-level
+// state. Consumers call `loadCategoryKeywords(path?)` to obtain a merged
+// keyword map, then pass it to `categorizeTransaction(desc, type, keywords)`.
+//
+// This file contains only generic keywords (concepts + well-known global brands).
+// Personal/local merchants, banks, and anything else that would leak private
+// information live in a gitignored file whose path the caller passes in.
+// A committed `personal-keywords.example.js` is provided as a template.
 
 export const UNCATEGORIZED = 'Sem Categoria';
 
@@ -34,128 +40,105 @@ export const defaultCategories = {
     ]
 };
 
-// Define comprehensive keywords for each category
-export const categoryKeywords = {
+// Generic keywords — concepts and well-known global brands only.
+const genericKeywords = {
     expense: {
         'Viagem': [
             'viagem', 'travel', 'vacation', 'journey',
             'hotel', 'flight', 'booking', 'airbnb', 'expedia',
-            'cruise', 'aircanada', 'empreend', 'turi', 'pix',
-            'motel', 'lodging', 'accommodation', 'airline',
-            'holiday', 'tour', 'resort', 'localiza', 'airalo',
-            'marriott', 'air can'
+            'cruise', 'motel', 'lodging', 'accommodation', 'airline',
+            'holiday', 'tour', 'resort', 'marriott',
+            'empreend', 'turi', 'pix', 'airalo', 'priority pass',
+            'aircanada', 'air can', 'localiza'
         ],
         'Casa': [
-            'home', 'house', 'mortgage', 'rent', 'property',
-            'strata', 'hydro', 'utility', 'shaw', 'insurance',
-            'gallery', 'winners', 'handyman', 'apartment', 'condo',
-            'real estate', 'housing', 'maintenance', 'repair', 'improvement',
-            'furniture', 'decor', 'parkside', 'rogers'
+            'home', 'mortgage', 'property', 'utility', 'insurance',
+            'apartment', 'condo', 'real estate', 'housing',
+            'repair', 'improvement', 'furniture',
+            'hydro', 'handyman', 'winners'
         ],
         'Tarifa': [
-            'tarifa', 'charge', 'membership', 'adjusted cost base',
-            'bradesco prime', 'annual', 'monthly', 'interest', 'penalty',
-            'overdraft', 'atm', 'financial', 'tax',
-             'subscription', 'doc/ted'
+            'tarifa', 'membership', 'annual', 'penalty', 'overdraft', 'tax',
+            'adjusted cost base', 'doc/ted'
         ],
         'Dívida': [
-            'dívida', 'debt', 'payment', 'bill', 'insurance',
-            'loan', 'credit', 'plano de saúde', 'student loan', 'mortgage'
+            'dívida', 'debt', 'bill', 'plano de saúde', 'student loan'
         ],
         'Saúde': [
             'saúde', 'health', 'medical', 'doctor', 'pharmacy',
-            'clinic', 'therapy', 'wellness', 'enchante hair',
-            'london drugs', 'shoppers', 'sally beauty',
-            'exames', 'consulta', 'terapia', 'physician', 'hospital',
-            'dental', 'dentist', 'vision', 'eye', 'drug', 'prescription',
-            'medicine', 'healthcare', 'insurance', 'drogaria', 'shopbeauty',
-            'pharma', 'lifelabs', 'farmacia', 'counseling',
-            'h.bank', 'pague menos'
+            'clinic', 'therapy', 'wellness', 'exames', 'consulta',
+            'terapia', 'physician', 'hospital', 'dental', 'dentist',
+            'eye', 'prescription', 'medicine', 'healthcare',
+            'drogaria', 'pharma', 'farmacia', 'counseling',
+            'cabeleireiro', 'shoppers', 'pague menos'
         ],
         'Mercado': [
             'merc', 'grocery', 'market', 'supermarket', 'costco', 'safeway',
-            'walmart', 'victoria hill market', 'persian baanou', 'canadian tire',
-            'home depot', 'dollar tree', 'iga', 'best season produce',
-            'target', 'trader', 'whole foods', 'aldi', 'kroger', 'publix',
-            'shoprite', 'choices', 'elements brazil', 'dollar store', 'nutri haven'
+            'walmart', 'home depot', 'dollar tree', 'target', 'trader',
+            'whole foods', 'aldi', 'kroger', 'publix', 'shoprite',
+            'dollar store', 'canadian tire', 'dollarama'
         ],
         'Telefone': [
-            'telefone', 'phone', 'mobile', 'cellular',
-            'communication', 'fido mobile', 'skype', 'cell',
-            'provider', 'cable'
+            'telefone', 'phone', 'mobile', 'cellular', 'communication', 'skype'
         ],
         'Alimentação': [
             'alimentação', 'food', 'restaurant', 'cafe', 'dining',
             'meal', 'coffee', 'bar', 'bakery', 'starbucks',
             'uber eats', 'pho', 'sushi', 'pizza', 'brewery', 'cuisine',
-            'liquor', 'ramen', 'pub', 'restaurante', 'lanchonete',
-            'burger', 'breakfast', 'lunch', 'dinner', 'bistro', 'grill', 'eats',
-            'sao braz', 'viet', 'cachacaria', 'winery', 'kitchen', 'keg', 'poke',
-            'hortons', 'gastronom', 'pie hole', 'beer', 'brewery', 'caffe mira',
-            'brewing', 'ice cream', 'soccavo', 'pdv365', 'shipyards christmas',
-            'chocolat'
+            'liquor', 'ramen', 'restaurante', 'lanchonete', 'burger',
+            'breakfast', 'lunch', 'dinner', 'bistro', 'grill', 'eats',
+            'winery', 'kitchen', 'gastronom', 'beer', 'brewing',
+            'ice cream', 'pizzeria', 'gelateria',
+            'boteco', 'cachacaria', 'coxinha', 'chocolat', 'brew',
+            'viet', 'tst', 'hortons', 'keg', 'poke'
         ],
         'Vestuário': [
-            'vestuário', 'clothing', 'clothes', 'fashion', 'wear',
-            'apparel', 'dress', 'arcteryx', 'winners', 'gap',
-            'diesel', 'jack & jones', 'old navy', 'renner', 'h&m',
-            'sport chek', 'accessory', 'mall', 'outlet', 'retail',
-            'michaels', 'shoes', 'itx canada'
+            'vestuário', 'clothing', 'clothes', 'fashion', 'apparel',
+            'outlet', 'shoes'
         ],
         'Outro': [
-            'outro', 'other', 'miscellaneous', 'various',
-            'unclassified', 'amazon', 'temu', 'apple store',
-            'undetectable', 'airalo', 'varejopag', 'nagem',
-            'ebay', 'etsy', 'purchase', 'buy', 'electronics',
-            'device', 'gadget', 'assorted', 'mixed', 'different'
+            'outro', 'miscellaneous', 'various', 'unclassified',
+            'amazon', 'temu', 'apple store', 'ebay', 'etsy',
+            'buy', 'gadget', 'assorted', 'mixed', 'different',
+            'varejopag', 'nagem'
         ],
         'Lazer': [
-            'lazer', 'leisure', 'entertainment', 'fun',
-            'recreation', 'hobby', 'netflix', 'spotify',
-            'cineplex', 'playstation', 'cirque du soleil',
-            'obaticket', 'cinema', 'movie', 'theater', 'concert',
-            'show', 'event', 'ticket', 'music', 'game',
-            'subscription', 'streaming'
+            'lazer', 'leisure', 'entertainment', 'fun', 'recreation',
+            'hobby', 'netflix', 'spotify', 'cinema', 'movie',
+            'theater', 'concert', 'show', 'ticket', 'music',
+            'playstation', 'cirque du soleil', 'cineplex', 'obaticket'
         ],
         'Transporte': [
-            'transporte', 'transport', 'travel', 'uber', 'taxi',
-            'bus', 'train', 'parking', 'fuel', 'vehicle',
-            'e-bike', 'impark', 'brentwood parking',
-            'lot', 'chv', 'lyft', 'transit',
-            'subway', 'toll', 'auto', 'rental', 'maintenance', 'compass',
-            'indigo park', 'icbc', 'easypark', 'chevron', 'posto'
+            'transporte', 'transport', 'uber', 'taxi', 'bus',
+            'parking', 'fuel', 'vehicle', 'lyft', 'transit', 'subway',
+            'auto', 'rental', 'maintenance', 'e-bike', 'posto', 'chevron',
+            'impark', 'easypark', 'indigo park', 'driver services', 'chv'
         ],
         'Educação': [
-            'educação', 'education', 'school', 'course',
-            'learning', 'study', 'training', 'student',
-            'vancouver community college', 'criminal rec check',
-            'college', 'university', 'tuition', 'class', 'workshop',
-            'seminar', 'textbook', 'material', 'anthropic'
+            'educação', 'education', 'school', 'student', 'college',
+            'university', 'tuition', 'workshop', 'seminar', 'textbook',
+            'abebooks'
         ],
         'Internet': [
-            'internet', 'online', 'web', 'network', 'wifi',
-            'cable', 'service provider', 'electric', 'water',
-            'power', 'energy', 'utility'
+            'internet', 'online', 'network', 'service provider', 'water'
         ],
         'Presente': [
-            'presente', 'gift', 'donation', 'present', 'hallmark',
-            'charity', 'nonprofit', 'contribute', 'support',
-            'fundraiser', 'cause', 'organization', 'foundation',
-            'give', 'donate'
+            'presente', 'gift', 'donation', 'present', 'charity',
+            'nonprofit', 'contribute', 'support', 'fundraiser',
+            'cause', 'organization', 'foundation', 'give', 'donate'
         ],
         'Curso': [
             'curso', 'course', 'class', 'training', 'workshop',
             'seminar', 'tuition', 'education', 'learning'
         ],
         'Empréstimo': [
-            'empréstimo', 'loan', 'credit', 'borrowing',
-            'debt', 'interest', 'mortgage', 'student loan'
+            'empréstimo', 'borrowing', 'student loan'
         ]
     },
     income: {
         'Trabalho': [
             'trabalho', 'work', 'salary', 'payroll', 'wage',
-            'income', 'earning', 'job', 'amazon', 'reembolso',
+            'income', 'earning', 'job', 'reembolso',
             'salário', 'contribuição', 'compensation', 'pay',
             'direct deposit', 'employment', 'career', 'profession',
             'occupation'
@@ -169,7 +152,7 @@ export const categoryKeywords = {
         'Reembolso': [
             'temu', 'refund', 'return', 'reimbursement', 'cashback',
             'rebate', 'credit', 'chargeback', 'adjustment', 'correction',
-            'reversal', 'interac', 'cineplex', 'cheque', 'pix'
+            'reversal', 'cheque', 'pix', 'interac'
         ],
         'Outro': [
             'outro', 'other', 'miscellaneous', 'diversos',
@@ -185,9 +168,40 @@ export const categoryKeywords = {
     }
 };
 
-// Categorize transaction based on description
-export function categorizeTransaction(description, type) {
-    if (!categoryKeywords[type]) return UNCATEGORIZED;
+// Build a merged category-keyword map. If `personalKeywordsPath` is supplied,
+// the module at that path is dynamically imported and its `personalKeywords`
+// export is prepended per category so personal entries win under
+// first-match-wins iteration. A missing/unreadable file is swallowed and the
+// generic map is returned unchanged — fresh clones work with zero config.
+//
+// Paths are resolved relative to this module (the one doing the dynamic
+// import), so callers in `js/` can pass `./personal-keywords.js` and tests
+// under `tests/` can pass `../tests/fixtures/...`.
+export async function loadCategoryKeywords(personalKeywordsPath) {
+    let personalKeywords = { expense: {}, income: {} };
+    if (personalKeywordsPath) {
+        try {
+            const mod = await import(personalKeywordsPath);
+            if (mod.personalKeywords) personalKeywords = mod.personalKeywords;
+        } catch {
+            // personal keywords file not present — use empty overrides
+        }
+    }
+
+    const merged = {};
+    for (const type of Object.keys(genericKeywords)) {
+        merged[type] = {};
+        for (const category of Object.keys(genericKeywords[type])) {
+            const personal = (personalKeywords?.[type]?.[category]) || [];
+            merged[type][category] = [...personal, ...genericKeywords[type][category]];
+        }
+    }
+    return merged;
+}
+
+// Categorize a transaction by scanning a pre-built keyword map.
+export function categorizeTransaction(description, type, categoryKeywords) {
+    if (!categoryKeywords || !categoryKeywords[type]) return UNCATEGORIZED;
 
     description = description.toLowerCase();
 
@@ -201,7 +215,7 @@ export function categorizeTransaction(description, type) {
 
     // Income fallback: if description matches an expense keyword, it's a refund
     if (type === 'income') {
-        for (const [category, keywords] of Object.entries(categoryKeywords['expense'])) {
+        for (const keywords of Object.values(categoryKeywords['expense'])) {
             for (const keyword of keywords) {
                 if (description.includes(keyword)) {
                     return 'Reembolso';

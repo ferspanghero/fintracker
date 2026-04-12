@@ -83,8 +83,9 @@ js/
   state.js            # shared mutable state (transactions, sort, filters)
   dom.js              # DOM element references
   utils.js            # CSV line parsing, BRL-to-CAD conversion, HTML escaping
-  category-engine.js  # category keywords, auto-categorization logic (no DOM deps)
-  categories.js       # re-exports category-engine, category dropdowns, UI handlers
+  category-engine.js  # generic category keywords, auto-categorization logic (no DOM deps)
+  personal-keywords.example.js  # template for optional gitignored personal-keywords.js
+  categories.js       # loads keyword map, wraps categorizer, category dropdowns, UI handlers
   storage.js          # LocalStorage load/save
   transactions.js     # transaction CRUD, filtering, deduplication
   ui.js               # rendering, sorting, summary updates
@@ -93,6 +94,7 @@ js/
   parsers/            # format-specific CSV parsers (one per bank + registry)
 tests/
   helpers/            # test setup and DOM fixtures
+  fixtures/           # static module fixtures loaded by tests
   parsers/            # parser-specific tests (one per parser + registry)
   *.test.js           # unit and integration tests (one per module)
 tools/

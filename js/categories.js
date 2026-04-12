@@ -1,10 +1,24 @@
 import { categorySelect, transactionCategorySelect, newCategoryGroup } from './dom.js';
 import { currentFilter } from './state.js';
 import { renderTransactions, updateSummary } from './ui.js';
+import {
+    defaultCategories,
+    loadCategoryKeywords,
+    categorizeTransaction as engineCategorize
+} from './category-engine.js';
 
-// Re-export pure categorization data and logic from category-engine.js
-export { categoryKeywords, defaultCategories, categorizeTransaction } from './category-engine.js';
-import { defaultCategories } from './category-engine.js';
+export { defaultCategories };
+
+// Path (resolved relative to category-engine.js) to the optional gitignored
+// personal-keyword overrides. Missing file is fine — loader falls back to
+// generic keywords only.
+const PERSONAL_KEYWORDS_PATH = './personal-keywords.js';
+
+export const categoryKeywords = await loadCategoryKeywords(PERSONAL_KEYWORDS_PATH);
+
+export function categorizeTransaction(description, type) {
+    return engineCategorize(description, type, categoryKeywords);
+}
 
 // Initialize categories (mutable state for UI)
 export let categories = JSON.parse(JSON.stringify(defaultCategories));

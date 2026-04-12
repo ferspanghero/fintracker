@@ -7,7 +7,11 @@
 import { readFileSync, writeFileSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { categorizeTransaction } from '../../js/category-engine.js';
+import { loadCategoryKeywords, categorizeTransaction } from '../../js/category-engine.js';
+
+// Path resolved relative to category-engine.js (the module doing the dynamic
+// import), matching what the app passes in categories.js.
+const categoryKeywords = await loadCategoryKeywords('./personal-keywords.js');
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const CSV_PATH = resolve(__dirname, 'all_time_controle_de_gastos.csv');
@@ -69,7 +73,7 @@ const mismatches = [];
 const semCategoria = [];
 
 for (const txn of transactions) {
-    const got = categorizeTransaction(txn.description, txn.type);
+    const got = categorizeTransaction(txn.description, txn.type, categoryKeywords);
 
     if (got === txn.expectedCategory) {
         matches.push(txn);
