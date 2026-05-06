@@ -14,6 +14,17 @@ export { defaultCategories };
 // generic keywords only.
 const PERSONAL_KEYWORDS_PATH = './personal-keywords.js';
 
+// `await` at the top level of a module (top-level await) is intentional here.
+// `loadCategoryKeywords` is async because it does a dynamic `import()` of the
+// optional gitignored personal-keywords file — that returns a Promise. By
+// awaiting at module scope, we guarantee `categoryKeywords` is fully populated
+// before any code that imports this module can read it; the module system
+// enforces the ordering for free, so callers never see a half-loaded value.
+//
+// Trade-off: this module's evaluation is paused until the await resolves,
+// which can finish AFTER the browser fires DOMContentLoaded. main.js handles
+// that race explicitly via a `document.readyState` branch — keep them in sync
+// if you ever change this.
 export const categoryKeywords = await loadCategoryKeywords(PERSONAL_KEYWORDS_PATH);
 
 export function categorizeTransaction(description, type) {

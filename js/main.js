@@ -26,5 +26,16 @@ export function init() {
     addEventListeners();
 }
 
-// Initialize the application when DOM is loaded
-document.addEventListener('DOMContentLoaded', init);
+// Why this branch instead of a plain `addEventListener('DOMContentLoaded', init)`:
+// `categories.js` uses top-level `await` to load optional personal keywords.
+// That pauses the evaluation of every module that imports it (including this
+// one), and the browser's DOMContentLoaded event can fire BEFORE the await
+// resolves and this line runs. If we only registered a listener, it would
+// attach after the event already fired and `init()` would never be called —
+// the page would render but no handlers would be wired up. Checking
+// `readyState` lets us register-or-run, covering both timings.
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+} else {
+    init();
+}

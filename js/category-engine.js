@@ -55,11 +55,11 @@ const genericKeywords = {
             'home', 'mortgage', 'property', 'utility', 'insurance',
             'apartment', 'condo', 'real estate', 'housing',
             'repair', 'improvement', 'furniture',
-            'hydro', 'handyman', 'winners'
+            'hydro', 'handyman', 'winners', 'canadian tire'
         ],
         'Tarifa': [
             'tarifa', 'membership', 'annual', 'penalty', 'overdraft', 'tax',
-            'adjusted cost base', 'doc/ted'
+            'adjusted cost base', 'adjustedcostbase', 'doc/ted'
         ],
         'Dívida': [
             'dívida', 'debt', 'bill', 'plano de saúde', 'student loan'
@@ -76,7 +76,7 @@ const genericKeywords = {
             'merc', 'grocery', 'market', 'supermarket', 'costco', 'safeway',
             'walmart', 'home depot', 'dollar tree', 'target', 'trader',
             'whole foods', 'aldi', 'kroger', 'publix', 'shoprite',
-            'dollar store', 'canadian tire', 'dollarama'
+            'dollar store', 'dollarama'
         ],
         'Telefone': [
             'telefone', 'phone', 'mobile', 'cellular', 'communication', 'skype'
@@ -104,7 +104,7 @@ const genericKeywords = {
         ],
         'Lazer': [
             'lazer', 'leisure', 'entertainment', 'fun', 'recreation',
-            'hobby', 'netflix', 'spotify', 'cinema', 'movie',
+            'hobby', 'netflix', 'spotify', 'primevideo', 'cinema', 'movie',
             'theater', 'concert', 'show', 'ticket', 'music',
             'playstation', 'cirque du soleil', 'cineplex', 'obaticket'
         ],
@@ -112,7 +112,7 @@ const genericKeywords = {
             'transporte', 'transport', 'uber', 'taxi', 'bus',
             'parking', 'fuel', 'vehicle', 'lyft', 'transit', 'subway',
             'auto', 'rental', 'maintenance', 'e-bike', 'posto', 'chevron',
-            'impark', 'easypark', 'indigo park', 'driver services', 'chv'
+            'impark', 'easypark', 'indigo park', 'zipby', 'driver services', 'chv'
         ],
         'Educação': [
             'educação', 'education', 'school', 'student', 'college',
