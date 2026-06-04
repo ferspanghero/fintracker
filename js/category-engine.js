@@ -70,7 +70,7 @@ const genericKeywords = {
             'terapia', 'physician', 'hospital', 'dental', 'dentist',
             'eye', 'prescription', 'medicine', 'healthcare',
             'drogaria', 'pharma', 'farmacia', 'counseling',
-            'cabeleireiro', 'shoppers', 'pague menos'
+            'cabeleireiro', 'shoppers', 'pague menos', 'sephora'
         ],
         'Mercado': [
             'merc', 'grocery', 'market', 'supermarket', 'costco', 'safeway',
@@ -87,10 +87,10 @@ const genericKeywords = {
             'uber eats', 'pho', 'sushi', 'pizza', 'brewery', 'cuisine',
             'liquor', 'ramen', 'restaurante', 'lanchonete', 'burger',
             'breakfast', 'lunch', 'dinner', 'bistro', 'grill', 'eats',
-            'winery', 'kitchen', 'gastronom', 'beer', 'brewing',
+            'winery', 'wine', 'kitchen', 'gastronom', 'beer', 'brewing',
             'ice cream', 'pizzeria', 'gelateria',
             'boteco', 'cachacaria', 'coxinha', 'chocolat', 'brew',
-            'viet', 'tst', 'hortons', 'keg', 'poke'
+            'viet', 'tst', 'hortons', 'keg', 'poke', 'steak', 'bagel'
         ],
         'Vestuário': [
             'vestuário', 'clothing', 'clothes', 'fashion', 'apparel',
@@ -98,7 +98,7 @@ const genericKeywords = {
         ],
         'Outro': [
             'outro', 'miscellaneous', 'various', 'unclassified',
-            'amazon', 'temu', 'apple store', 'ebay', 'etsy',
+            'amazon', 'amzn', 'temu', 'apple store', 'ebay', 'etsy',
             'buy', 'gadget', 'assorted', 'mixed', 'different',
             'varejopag', 'nagem'
         ],
@@ -120,7 +120,7 @@ const genericKeywords = {
             'abebooks'
         ],
         'Internet': [
-            'internet', 'online', 'network', 'service provider', 'water'
+            'internet', 'network', 'service provider', 'water'
         ],
         'Presente': [
             'presente', 'gift', 'donation', 'present', 'charity',

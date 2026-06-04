@@ -99,4 +99,26 @@ describe('categorizeTransaction', () => {
         const merged = await loadCategoryKeywords('../tests/fixtures/test-personal-keywords.js');
         expect(categorizeTransaction('zzsentinelcasazz payment', 'expense', merged)).toBe('Casa');
     });
+
+    it('routes the abbreviated "amzn" descriptor to Outro', () => {
+        expect(categorizeTransaction('AMZN MKTP CA', 'expense', kw)).toBe('Outro');
+    });
+
+    it('treats an amzn refund as Reembolso via the income fallback', () => {
+        expect(categorizeTransaction('AMZN MKTP CA', 'income', kw)).toBe('Reembolso');
+    });
+
+    it('matches steakhouse, bagel, and wine descriptions as Alimentação', () => {
+        expect(categorizeTransaction('THE STEAKHOUSE', 'expense', kw)).toBe('Alimentação');
+        expect(categorizeTransaction('BAGEL SHOP', 'expense', kw)).toBe('Alimentação');
+        expect(categorizeTransaction('WINE SHOP', 'expense', kw)).toBe('Alimentação');
+    });
+
+    it('does not route "online" descriptions to Internet', () => {
+        expect(categorizeTransaction('ONLINE PURCHASE', 'expense', kw)).not.toBe('Internet');
+    });
+
+    it('routes "sephora" to Saúde rather than matching the "pho" substring', () => {
+        expect(categorizeTransaction('SEPHORA', 'expense', kw)).toBe('Saúde');
+    });
 });
