@@ -121,4 +121,8 @@ describe('categorizeTransaction', () => {
     it('routes "sephora" to Saúde rather than matching the "pho" substring', () => {
         expect(categorizeTransaction('SEPHORA', 'expense', kw)).toBe('Saúde');
     });
+
+    it('routes the abbreviated "sdm" drugstore descriptor to Saúde', () => {
+        expect(categorizeTransaction('SDM 2245             VANCOUVER', 'expense', kw)).toBe('Saúde');
+    });
 });

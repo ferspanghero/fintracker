@@ -70,7 +70,7 @@ const genericKeywords = {
             'terapia', 'physician', 'hospital', 'dental', 'dentist',
             'eye', 'prescription', 'medicine', 'healthcare',
             'drogaria', 'pharma', 'farmacia', 'counseling',
-            'cabeleireiro', 'shoppers', 'pague menos', 'sephora'
+            'cabeleireiro', 'shoppers', 'sdm', 'pague menos', 'sephora'
         ],
         'Mercado': [
             'merc', 'grocery', 'market', 'supermarket', 'costco', 'safeway',
