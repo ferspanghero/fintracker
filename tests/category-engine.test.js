@@ -125,4 +125,36 @@ describe('categorizeTransaction', () => {
     it('routes the abbreviated "sdm" drugstore descriptor to Saúde', () => {
         expect(categorizeTransaction('SDM 2245             VANCOUVER', 'expense', kw)).toBe('Saúde');
     });
+
+    it('routes the "haggen" supermarket descriptor to Mercado', () => {
+        expect(categorizeTransaction('HAGGEN 3493', 'expense', kw)).toBe('Mercado');
+    });
+
+    it('still routes a "holiday inn" descriptor to Viagem', () => {
+        expect(categorizeTransaction('HOLIDAY INN VANCOUVER', 'expense', kw)).toBe('Viagem');
+    });
+
+    it('leaves a generic "holidays" descriptor uncategorized for personal keywords to claim', () => {
+        expect(categorizeTransaction('SEASONAL HOLIDAYS SHOP', 'expense', kw)).toBe(UNCATEGORIZED);
+    });
+});
+
+describe('categorizeTransaction with personal overrides that outrank generics', () => {
+    let merged;
+
+    beforeAll(async () => {
+        merged = await loadCategoryKeywords('../tests/fixtures/routing-personal-keywords.js');
+    });
+
+    it('lets a personal Mercado entry win over the generic "food" keyword', () => {
+        expect(categorizeTransaction('ZZSENTINELFOODZZ STORE', 'expense', merged)).toBe('Mercado');
+    });
+
+    it('lets a personal Alimentação entry claim a "holidays" descriptor', () => {
+        expect(categorizeTransaction('SQ *ZZSENTINELHOLIDAYSZZ', 'expense', merged)).toBe('Alimentação');
+    });
+
+    it('routes an amazon deposit to Reembolso rather than Trabalho', () => {
+        expect(categorizeTransaction('AMAZON.CA               866-216-1072', 'income', merged)).toBe('Reembolso');
+    });
 });

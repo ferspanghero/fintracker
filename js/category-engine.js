@@ -47,7 +47,7 @@ const genericKeywords = {
             'viagem', 'travel', 'vacation', 'journey',
             'hotel', 'flight', 'booking', 'airbnb', 'expedia',
             'cruise', 'motel', 'lodging', 'accommodation', 'airline',
-            'holiday', 'tour', 'resort', 'marriott',
+            'holiday inn', 'tour', 'resort', 'marriott',
             'empreend', 'turi', 'pix', 'airalo', 'priority pass',
             'aircanada', 'air can', 'localiza'
         ],
@@ -76,7 +76,7 @@ const genericKeywords = {
             'merc', 'grocery', 'market', 'supermarket', 'costco', 'safeway',
             'walmart', 'home depot', 'dollar tree', 'target', 'trader',
             'whole foods', 'aldi', 'kroger', 'publix', 'shoprite',
-            'dollar store', 'dollarama'
+            'dollar store', 'dollarama', 'haggen'
         ],
         'Telefone': [
             'telefone', 'phone', 'mobile', 'cellular', 'communication', 'skype'
