@@ -76,6 +76,37 @@ describe('Integration: CSV import and parsing', () => {
         expect(result.transactions[0].amount).toBeCloseTo(BRLtoCAD(5000));
         expect(result.transactions[1].type).toBe('expense');
     });
+
+    it('auto-detects a Bradesco export that starts with an account title row', () => {
+        const csv = [
+            'Extrato de: Ag: 0000 | Conta: 000000-0;;;;;',
+            'Data;Histórico;Docto.;Crédito (R$);Débito (R$);Saldo (R$)',
+            '31/08/2025;COD. LANC. 0;0;0,00; ;1.000,00',
+            '23/09/2025;INCOME SENTINEL;2;1,50; ;1.001,50',
+            '23/09/2025;EXPENSE SENTINEL A;111; ;500,00;501,50',
+            '23/09/2025;EXPENSE SENTINEL B;111; ;10,00;491,50',
+            ';;;;;',
+            'Filtro de resultados - Movimentação entre:  01/09/2025 e 30/09/2025;;;;;',
+            'Os dados acima tem como base 07/10/2025 às 02:38 e estão sujeitos a alterações.;;;;;',
+            'Últimos Lancamentos;;;;;',
+            'Data;Histórico;Docto.;Crédito (R$);Débito (R$);',
+            '23/09/2025;COD. LANC. 0;0; ; ;491,50',
+            '07/10/2025;PIX SENTINEL;222; ;40,00;451,50',
+            '',
+            ';;Total;0,00;40,00;451,50;'
+        ].join('\r\n');
+
+        const result = parseCSV(csv, 'auto');
+
+        expect(result.errorCount).toBe(0);
+        expect(result.transactions.map(t => [t.description, t.type])).toEqual([
+            ['INCOME SENTINEL', 'income'],
+            ['EXPENSE SENTINEL A', 'expense'],
+            ['EXPENSE SENTINEL B', 'expense'],
+            ['PIX SENTINEL', 'expense']
+        ]);
+        expect(result.transactions.every(t => t.account === 'Bradesco')).toBe(true);
+    });
 });
 
 describe('Integration: export then re-import round-trip', () => {

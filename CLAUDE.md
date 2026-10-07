@@ -32,6 +32,7 @@ tools/category-benchmark/
 - **Tests are the gate.** Vitest + jsdom, coverage thresholds in `vitest.config.js` (statements/lines/functions 90, branches 85). Cover both branches by **injecting fixtures**, never by renaming or deleting real files.
 - **`js/categories.js` uses top-level `await`**, so its module evaluation can finish after `DOMContentLoaded`. `js/main.js` handles that with a `document.readyState` register-or-run branch — keep the two in sync if either changes.
 - **Nothing personal gets committed.** `js/personal-keywords.js` and `resources/` are gitignored. Local merchant names, banks, and raw statement data stay out of tracked files — including tests, which use sentinel strings instead.
+- **Auto-detect sees only the file's first line.** If a bank export opens with a title or preamble row, the parser's `detect()` must recognize that row, or the file silently falls through to the TD fallback. `hasHeader` skips only line 0, so `parseLine` must return `null` for any further header or metadata rows.
 - A fresh clone works with zero config: a missing personal-keywords file falls back to generic keywords only.
 
 ## Categorization rules

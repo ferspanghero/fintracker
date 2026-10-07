@@ -7,8 +7,11 @@ export default {
     account: 'Bradesco',
     hasHeader: true,
 
+    // Exports may open with an "Extrato de: Ag: … | Conta: …" title row before the column header;
+    // hasHeader skips whichever of the two comes first and parseLine drops the other.
     detect(headerRow) {
-        return headerRow.includes('data;histórico;docto.;crédito (r$);débito (r$);saldo (r$)');
+        return headerRow.includes('data;histórico;docto.;crédito (r$);débito (r$);saldo (r$)') ||
+            /^extrato de:.*\bag:.*\bconta:/.test(headerRow);
     },
 
     parseDate(dateStr) {

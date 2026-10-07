@@ -16,6 +16,18 @@ describe('bradesco parser', () => {
             expect(bradescoParser.detect('data;histórico;docto.;crédito (r$);débito (r$);saldo (r$)')).toBe(true);
         });
 
+        it('detects the account title row that precedes the header', () => {
+            expect(bradescoParser.detect('extrato de: ag: 0000 | conta: 000000-0;;;;;')).toBe(true);
+        });
+
+        it('rejects an extrato title without agency and account', () => {
+            expect(bradescoParser.detect('extrato de: conta corrente;;;;;')).toBe(false);
+        });
+
+        it('rejects ag: when it only appears inside another word', () => {
+            expect(bradescoParser.detect('extrato de: pag: 0000 | conta: 000000-0;;;;;')).toBe(false);
+        });
+
         it('rejects unrelated header', () => {
             expect(bradescoParser.detect('some,random,header')).toBe(false);
         });
@@ -43,6 +55,10 @@ describe('bradesco parser', () => {
 
         it('skips Extrato metadata row', () => {
             expect(bradescoParser.parseLine('Extrato;foo;bar;baz;qux;quux')).toBeNull();
+        });
+
+        it('skips the account title row', () => {
+            expect(bradescoParser.parseLine('Extrato de: Ag: 0000 | Conta: 000000-0;;;;;')).toBeNull();
         });
 
         it('skips Filtro metadata row', () => {

@@ -63,6 +63,10 @@ describe('parser registry', () => {
             expect(detectParser('Data;Histórico;Docto.;Crédito (R$);Débito (R$);Saldo (R$)').id).toBe('bradesco');
         });
 
+        it('detects bradesco from its leading account title row', () => {
+            expect(detectParser('\uFEFFExtrato de: Ag: 0000 | Conta: 000000-0;;;;;').id).toBe('bradesco');
+        });
+
         it('falls back to td for unknown headers', () => {
             expect(detectParser('some,random,header').id).toBe('td');
         });
