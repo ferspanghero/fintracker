@@ -38,7 +38,7 @@ describe('Integration: CSV import and parsing', () => {
     it('imports Mastercard CSV', () => {
         const csv = [
             'Description,Type,Card Holder Name,Date,Time,Amount',
-            'COSTCO WHOLESALE,PURCHASE,JOHN DOE,2/15/2025,2:30 PM,150.00',
+            'COSTCO WHOLESALE,PURCHASE,JOHN DOE,2/15/2025,2:30 PM,-150.00',
             'ONLINE PAYMENT,PAYMENT,JOHN DOE,2/20/2025,10:00 AM,500.00'
         ].join('\n');
 
@@ -47,6 +47,23 @@ describe('Integration: CSV import and parsing', () => {
         expect(result.transactions[0].type).toBe('expense');
         expect(result.transactions[0].description).toContain('JOHN DOE');
         expect(result.transactions[1].type).toBe('income');
+    });
+
+    it('auto-detects a Mastercard export with quoted fields', () => {
+        const csv = [
+            '"Description","Type","Card Holder Name","Date","Time","Amount"',
+            '"SENTINEL STORE","PURCHASE","JOHN DOE","02/15/2025","02:30 PM","-150.00"',
+            '"SENTINEL CARD PAYMENT","PAYMENT","JOHN DOE","02/16/2025","09:00 AM","20.00"',
+            '"SENTINEL STORE","REFUND","JOHN DOE","02/17/2025","04:00 AM","40.00"'
+        ].join('\r\n');
+
+        const result = parseCSV('\uFEFF' + csv, 'auto');
+
+        expect(result.transactions.map(t => [t.description, t.account, t.amount, t.type])).toEqual([
+            ['SENTINEL STORE (JOHN DOE)', 'Mastercard', 150, 'expense'],
+            ['SENTINEL CARD PAYMENT (JOHN DOE)', 'Mastercard', 20, 'income'],
+            ['SENTINEL STORE (JOHN DOE)', 'Mastercard', 40, 'income']
+        ]);
     });
 
     it('imports TD CSV (no header)', () => {

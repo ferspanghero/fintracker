@@ -22,6 +22,7 @@ No linter or build step is configured — don't invent one.
 js/category-engine.js   # pure categorization: keyword map + matcher, no DOM deps
 js/personal-keywords.js # gitignored local overrides (template: personal-keywords.example.js)
 js/categories.js        # loads the merged keyword map, wraps the categorizer, drives dropdowns
+js/ignore-rules.js      # import ignore list: generic prefixes, personal-file loader, matcher
 js/parsers/             # one module per bank format + a registry
 tests/                  # mirrors js/; fixtures/ holds injectable module fixtures
 tools/category-benchmark/
@@ -30,9 +31,10 @@ tools/category-benchmark/
 ## Conventions & gotchas
 
 - **Tests are the gate.** Vitest + jsdom, coverage thresholds in `vitest.config.js` (statements/lines/functions 90, branches 85). Cover both branches by **injecting fixtures**, never by renaming or deleting real files.
-- **`js/categories.js` uses top-level `await`**, so its module evaluation can finish after `DOMContentLoaded`. `js/main.js` handles that with a `document.readyState` register-or-run branch — keep the two in sync if either changes.
+- **`js/categories.js` and `js/import-export.js` use top-level `await`** (personal keywords, ignore prefixes), so module evaluation can finish after `DOMContentLoaded`. `js/main.js` handles that with a `document.readyState` register-or-run branch — keep them in sync if any changes.
 - **Nothing personal gets committed.** `js/personal-keywords.js` and `resources/` are gitignored. Local merchant names, banks, and raw statement data stay out of tracked files — including tests, which use sentinel strings instead.
-- **Auto-detect sees only the file's first line.** If a bank export opens with a title or preamble row, the parser's `detect()` must recognize that row, or the file silently falls through to the TD fallback. `hasHeader` skips only line 0, so `parseLine` must return `null` for any further header or metadata rows.
+- **Auto-detect sees only the file's first line**, lowercased, trimmed, and with double quotes stripped — write `detect()` against that bare text. If a bank export opens with a title or preamble row, the parser's `detect()` must recognize that row, or the file silently falls through to the TD fallback. `hasHeader` skips only line 0, so `parseLine` must return `null` for any further header or metadata rows.
+- **Income vs expense comes from the amount's sign or debit/credit columns, never a bank's type label** — labels miss refunds and other credits (see the parser contract in `project_files/overview.md`).
 - A fresh clone works with zero config: a missing personal-keywords file falls back to generic keywords only.
 
 ## Categorization rules
@@ -44,3 +46,11 @@ The matcher is **case-insensitive substring, first match wins**, scanning catego
 - **Where a keyword belongs:** concepts and well-known brands → `js/category-engine.js`; local merchants, banks, and anything identifying → the gitignored personal file.
 - **Income falls back to `Reembolso`** when a description matches no income keyword but does match an expense keyword — a refund of a purchase, not new income. Don't add merchant names to `income.Trabalho` to force a route; that turns every refund from that merchant into salary.
 - Categories are Brazilian Portuguese and defined in `defaultCategories`; the merged keyword map must only contain those keys.
+
+## Ignore list rules
+
+Imported rows whose description, trimmed and lowercased, **starts with** an ignore prefix are skipped and counted (before the duplicate check). Meant for money moving between the user's own accounts — card payments, savings transfers — which otherwise land twice.
+
+- **Use complete phrases, never bare words.** A starts-with match on `payment` would drop legitimate rows.
+- **Where a prefix belongs:** standard bank wording → `genericIgnorePrefixes` in `js/ignore-rules.js`; anything naming the user's bank, issuer, or accounts → the personal file's `ignorePrefixes` export.
+- Match against the description **as parsed** (e.g. the Mastercard parser appends ` (CARDHOLDER)`), which a prefix naturally tolerates.

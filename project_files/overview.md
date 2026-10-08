@@ -31,6 +31,7 @@ Persist + Re-render (storage.js → ui.js)
 
 **Pure logic** (no DOM dependencies):
 - `category-engine.js` — keyword-based auto-categorization. Exposes `loadCategoryKeywords(path?)`, which merges generic keywords with optional personal overrides loaded from a gitignored file, and `categorizeTransaction(description, type, keywords)`, which scans a pre-built map. Holds no module-level state — callers (the UI layer and the benchmark tool) pass the path they want and hold the resulting map.
+- `ignore-rules.js` — import ignore list for transfers between your own accounts. Exposes `loadIgnorePrefixes(path?)`, which merges an optional `ignorePrefixes` export from the same gitignored personal file with generic bank-wording prefixes (trimmed, lowercased, blanks dropped), and `isIgnored(description, prefixes)`, a case-insensitive starts-with match on the whole description.
 - `utils.js` — CSV line tokenizer (handles quoting), currency conversion, HTML escaping.
 - `parsers/` — one module per bank format, each owning its own line splitting, date parsing, and field extraction. Connected via a registry (`parsers/index.js`).
 
@@ -40,7 +41,7 @@ Persist + Re-render (storage.js → ui.js)
 - `categories.js` — wraps `category-engine.js` with dropdown rendering. Holds mutable `categories` state (can grow when importing FinTracker exports with custom categories).
 
 **Orchestration**:
-- `import-export.js` — CSV import pipeline (file reading → parser registry → auto-categorization → duplicate detection → state push) and CSV export.
+- `import-export.js` — CSV import pipeline (file reading → parser registry → auto-categorization → ignore list → duplicate detection → state push) and CSV export.
 - `transactions.js` — CRUD, filtering, and `saveAndRefresh()` helper that persists to localStorage then re-renders.
 - `events.js` — wires all DOM event listeners.
 - `main.js` — bootstrap: sets defaults, loads localStorage, populates dropdowns, attaches listeners.
@@ -64,6 +65,9 @@ File Input → FileReader → parseCSV(content, fileType)
                            parser.afterParse() if defined (FinTracker: registers custom categories)
                               │
                               ▼
+                         Ignore list (description starts with an ignore prefix → skipped, counted)
+                              │
+                              ▼
                          Duplicate detection (composite key: date-description-amount-type-account)
                               │
                               ▼
@@ -80,12 +84,14 @@ Each parser in `js/parsers/` exports a plain object:
     name: 'American Express',
     account: 'Amex',
     hasHeader: true,
-    detect(headerRow) {},    // returns boolean
+    detect(headerRow) {},    // returns boolean; headerRow arrives lowercased, trimmed, quotes stripped
     parseDate(dateStr) {},   // returns Date or null
     parseLine(line) {},      // returns transaction object or null
     afterParse?(txn, ctx) {} // optional post-processing
 }
 ```
+
+`parseLine` returns `amount` as a positive number and derives `type` from the amount's sign or the file's debit/credit columns — never from a bank's transaction-type label, which misses refunds and other credits.
 
 Adding a new bank format: create a parser file, add one import to `parsers/index.js`.
 

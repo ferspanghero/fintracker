@@ -27,7 +27,8 @@ export function init() {
 }
 
 // Why this branch instead of a plain `addEventListener('DOMContentLoaded', init)`:
-// `categories.js` uses top-level `await` to load optional personal keywords.
+// `categories.js` and `import-export.js` use top-level `await` to load optional
+// personal keywords and ignore prefixes.
 // That pauses the evaluation of every module that imports it (including this
 // one), and the browser's DOMContentLoaded event can fire BEFORE the await
 // resolves and this line runs. If we only registered a listener, it would

@@ -13,7 +13,8 @@ export function getParserById(id) {
 }
 
 export function detectParser(headerRow) {
-    const normalized = headerRow.toLowerCase().trim();
+    // Some banks quote every header field ("Description","Type",...); detect() matches the bare text.
+    const normalized = headerRow.toLowerCase().trim().replace(/"/g, '');
     for (const parser of parsers) {
         if (parser.detect(normalized)) return parser;
     }

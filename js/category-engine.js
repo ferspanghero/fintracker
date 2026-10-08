@@ -87,7 +87,7 @@ const genericKeywords = {
             'uber eats', 'pho', 'sushi', 'pizza', 'brewery', 'cuisine',
             'liquor', 'ramen', 'restaurante', 'lanchonete', 'burger',
             'breakfast', 'lunch', 'dinner', 'bistro', 'grill', 'eats',
-            'winery', 'wine', 'kitchen', 'gastronom', 'beer', 'brewing',
+            'winery', 'wine', 'vineyard', 'kitchen', 'gastronom', 'beer', 'brewing',
             'ice cream', 'pizzeria', 'gelateria',
             'boteco', 'cachacaria', 'coxinha', 'chocolat', 'brew',
             'viet', 'tst', 'hortons', 'keg', 'poke', 'steak', 'bagel'

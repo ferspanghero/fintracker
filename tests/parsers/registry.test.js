@@ -71,6 +71,22 @@ describe('parser registry', () => {
             expect(detectParser('some,random,header').id).toBe('td');
         });
 
+        it('detects mastercard when the header fields are quoted', () => {
+            expect(detectParser('"Description","Type","Card Holder Name","Date","Time","Amount"').id).toBe('mastercard');
+        });
+
+        it('detects mastercard from a quoted header with a BOM and CRLF', () => {
+            expect(detectParser('\uFEFF"Description","Type","Card Holder Name","Date","Time","Amount"\r').id).toBe('mastercard');
+        });
+
+        it.each([
+            ['"Date","Description","Category","Account","Amount","Type"', 'fintracker'],
+            ['"Date","Date Processed","Description","Amount"', 'amex'],
+            ['"some","random","header"', 'td']
+        ])('detects quoted header %s as %s', (header, id) => {
+            expect(detectParser(header).id).toBe(id);
+        });
+
         it('is case insensitive', () => {
             expect(detectParser('DATE,DESCRIPTION,CATEGORY,ACCOUNT,AMOUNT,TYPE').id).toBe('fintracker');
         });

@@ -1,9 +1,14 @@
 import { transactions, currentFilter } from './state.js';
 import { fileInput, fileTypeSelect, importBtn } from './dom.js';
-import { categories, categorizeTransaction } from './categories.js';
+import { categories, categorizeTransaction, PERSONAL_KEYWORDS_PATH } from './categories.js';
 import { getFilteredTransactions, saveAndRefresh } from './transactions.js';
 import { sortTransactions } from './ui.js';
 import { getParserById, detectParser } from './parsers/index.js';
+import { loadIgnorePrefixes, isIgnored } from './ignore-rules.js';
+
+// Top-level await, like categoryKeywords in categories.js — main.js already
+// handles module evaluation finishing after DOMContentLoaded.
+const ignorePrefixes = await loadIgnorePrefixes(PERSONAL_KEYWORDS_PATH);
 
 export function getTransactionKey(transaction) {
     const dateStr = transaction.date ? transaction.date.toISOString().split('T')[0] : 'no-date';
@@ -24,25 +29,26 @@ export function handleImport() {
     importBtn.textContent = 'Importing...';
 
     // Process files sequentially
-    processFiles(files, 0, 0, 0, 0);
+    processFiles(files, 0, 0, 0, 0, 0);
 }
 
 // Process files sequentially
-export function processFiles(files, index, totalImported, totalDuplicates, totalErrors) {
+export function processFiles(files, index, totalImported, totalDuplicates, totalErrors, totalIgnored = 0) {
     // If all files have been processed
     if (index >= files.length) {
         // Re-enable import button
         importBtn.disabled = false;
         importBtn.textContent = 'Import';
 
+        const ignoredMsg = totalIgnored > 0 ? ` ${totalIgnored} transaction(s) matched the ignore list.` : '';
         const errorMsg = totalErrors > 0 ? ` ${totalErrors} error(s) occurred.` : '';
 
         if (totalImported > 0) {
             saveAndRefresh();
 
-            alert(`Successfully imported ${totalImported} transactions from ${files.length} file(s). ${totalDuplicates} duplicates were ignored.${errorMsg}`);
+            alert(`Successfully imported ${totalImported} transactions from ${files.length} file(s). ${totalDuplicates} duplicates were ignored.${ignoredMsg}${errorMsg}`);
         } else {
-            alert(`No transactions were imported. ${totalDuplicates} duplicates were ignored.${errorMsg}`);
+            alert(`No transactions were imported. ${totalDuplicates} duplicates were ignored.${ignoredMsg}${errorMsg}`);
         }
 
         return;
@@ -68,6 +74,11 @@ export function processFiles(files, index, totalImported, totalDuplicates, total
                 const transactionKeys = new Set(transactions.map(getTransactionKey));
 
                 importedTransactions.forEach(importedTransaction => {
+                    if (isIgnored(importedTransaction.description, ignorePrefixes)) {
+                        totalIgnored++;
+                        return;
+                    }
+
                     const importedTransactionKey = getTransactionKey(importedTransaction);
 
                     // Check if this transaction has been seen before. Note we do not update transactionKeys because
@@ -82,17 +93,17 @@ export function processFiles(files, index, totalImported, totalDuplicates, total
                 });
 
                 // Process next file
-                processFiles(files, index + 1, totalImported, totalDuplicates, totalErrors);
+                processFiles(files, index + 1, totalImported, totalDuplicates, totalErrors, totalIgnored);
             } else {
                 console.warn(`No transactions imported from file: ${file.name}`);
                 // Process next file
-                processFiles(files, index + 1, totalImported, totalDuplicates, totalErrors);
+                processFiles(files, index + 1, totalImported, totalDuplicates, totalErrors, totalIgnored);
             }
         } catch (error) {
             console.error(`Error importing file ${file.name}: ${error.message}`);
             totalErrors++;
             // Process next file
-            processFiles(files, index + 1, totalImported, totalDuplicates, totalErrors);
+            processFiles(files, index + 1, totalImported, totalDuplicates, totalErrors, totalIgnored);
         }
     };
 
@@ -101,7 +112,7 @@ export function processFiles(files, index, totalImported, totalDuplicates, total
         alert(`Error reading file ${file.name}. Please check the file encoding and format.`);
         totalErrors++;
         // Process next file
-        processFiles(files, index + 1, totalImported, totalDuplicates, totalErrors);
+        processFiles(files, index + 1, totalImported, totalDuplicates, totalErrors, totalIgnored);
     };
 
     // Try reading with UTF-8 encoding first, then fallback to Latin-1

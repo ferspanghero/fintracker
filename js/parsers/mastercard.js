@@ -20,7 +20,6 @@ export default {
         if (parts.length < 6) return null;
 
         const description = parts[0];
-        const transactionType = parts[1];
         const cardHolder = parts[2];
         const dateStr = parts[3];
         const amount = parseFloat(parts[5]);
@@ -28,7 +27,8 @@ export default {
         const date = this.parseDate(dateStr);
         if (!date) return null;
 
-        const type = transactionType === 'PAYMENT' ? 'income' : 'expense';
+        // Sign carries direction: debits are negative, credits (payments, refunds) positive.
+        const type = amount > 0 ? 'income' : 'expense';
 
         return {
             date,

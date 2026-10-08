@@ -114,6 +114,10 @@ describe('categorizeTransaction', () => {
         expect(categorizeTransaction('WINE SHOP', 'expense', kw)).toBe('Alimentação');
     });
 
+    it('matches vineyard descriptions as Alimentação', () => {
+        expect(categorizeTransaction('SENTINEL VINEYARDS', 'expense', kw)).toBe('Alimentação');
+    });
+
     it('does not route "online" descriptions to Internet', () => {
         expect(categorizeTransaction('ONLINE PURCHASE', 'expense', kw)).not.toBe('Internet');
     });

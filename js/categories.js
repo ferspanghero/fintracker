@@ -9,10 +9,10 @@ import {
 
 export { defaultCategories };
 
-// Path (resolved relative to category-engine.js) to the optional gitignored
-// personal-keyword overrides. Missing file is fine — loader falls back to
-// generic keywords only.
-const PERSONAL_KEYWORDS_PATH = './personal-keywords.js';
+// Path (resolved relative to the js/ loaders: category-engine.js and
+// ignore-rules.js) to the optional gitignored personal-keyword overrides.
+// Missing file is fine — loaders fall back to generic entries only.
+export const PERSONAL_KEYWORDS_PATH = './personal-keywords.js';
 
 // `await` at the top level of a module (top-level await) is intentional here.
 // `loadCategoryKeywords` is async because it does a dynamic `import()` of the

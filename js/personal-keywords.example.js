@@ -36,3 +36,9 @@ export const personalKeywords = {
         'Outro': []
     }
 };
+
+// Import ignore list: rows whose description STARTS WITH one of these phrases
+// (trimmed, case-insensitive) are skipped on import, like duplicates. Use it
+// for money moving between your own accounts. Write complete phrases — see
+// ignore-rules.js for the generic ones and why.
+export const ignorePrefixes = [];

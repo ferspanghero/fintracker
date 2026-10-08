@@ -283,6 +283,60 @@ describe('processFiles', () => {
         expect(window.alert).toHaveBeenCalledWith(expect.stringContaining('No transactions'));
     });
 
+    it('skips rows on the ignore list and reports how many', () => {
+        fileTypeSelect.value = 'amex';
+        const csvContent = [
+            'Date,Date Processed,Description,Amount',
+            '28 Feb 2025,28 Feb 2025,STARBUCKS,12.50',
+            '28 Feb 2025,28 Feb 2025,PAYMENT RECEIVED - THANK YOU,-300.00'
+        ].join('\n');
+        const mock = mockFileReader();
+
+        const files = { length: 1, 0: { name: 'test.csv' } };
+        processFiles(files, 0, 0, 0);
+        mock.onload({ target: { result: csvContent } });
+
+        expect(transactions.map(t => t.description)).toEqual(['STARBUCKS']);
+        expect(window.alert).toHaveBeenCalledWith(expect.stringContaining('1 transaction(s) matched the ignore list'));
+    });
+
+    it('counts a row that is both ignored and a duplicate as ignored only', () => {
+        fileTypeSelect.value = 'amex';
+        transactions.push(
+            { date: new Date(2025, 1, 28), description: 'PAYMENT RECEIVED - THANK YOU', amount: 300, type: 'income', category: 'Outro', account: 'Amex' }
+        );
+
+        const csvContent = 'Date,Date Processed,Description,Amount\n28 Feb 2025,28 Feb 2025,PAYMENT RECEIVED - THANK YOU,-300.00';
+        const mock = mockFileReader();
+
+        const files = { length: 1, 0: { name: 'test.csv' } };
+        processFiles(files, 0, 0, 0);
+        mock.onload({ target: { result: csvContent } });
+
+        expect(transactions.length).toBe(1);
+        expect(window.alert).toHaveBeenCalledWith(
+            'No transactions were imported. 0 duplicates were ignored. 1 transaction(s) matched the ignore list.'
+        );
+    });
+
+    it('carries the ignored count across files', () => {
+        fileTypeSelect.value = 'amex';
+        const csvContent = 'Date,Date Processed,Description,Amount\n28 Feb 2025,28 Feb 2025,PAYMENT RECEIVED - THANK YOU,-300.00';
+        const mock = mockFileReader();
+
+        const files = { length: 2, 0: { name: 'a.csv' }, 1: { name: 'b.csv' } };
+        processFiles(files, 0, 0, 0);
+        mock.onload({ target: { result: csvContent } });
+        mock.onload({ target: { result: csvContent } });
+
+        expect(window.alert).toHaveBeenCalledWith(expect.stringContaining('2 transaction(s) matched the ignore list'));
+    });
+
+    it('omits the ignore-list note when nothing was ignored', () => {
+        processFiles({ length: 0 }, 0, 5, 2, 0, 0);
+        expect(window.alert).toHaveBeenCalledWith(expect.not.stringContaining('ignore list'));
+    });
+
     it('handles parse errors gracefully', () => {
         fileTypeSelect.value = 'amex';
         const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});

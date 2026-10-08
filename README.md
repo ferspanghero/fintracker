@@ -12,6 +12,7 @@ Personal finance tracker that imports bank CSVs, auto-categorizes transactions, 
 - Export filtered transactions to CSV
 - Bulk select and delete transactions
 - Duplicate detection across imports
+- Import ignore list for transfers between your own accounts (e.g. card payments), with optional private entries in the gitignored personal keywords file
 
 ## Supported Banks
 
@@ -86,6 +87,7 @@ js/
   category-engine.js  # generic category keywords, auto-categorization logic (no DOM deps)
   personal-keywords.example.js  # template for optional gitignored personal-keywords.js
   categories.js       # loads keyword map, wraps categorizer, category dropdowns, UI handlers
+  ignore-rules.js     # import ignore list: generic + personal prefixes, starts-with matcher (no DOM deps)
   storage.js          # LocalStorage load/save
   transactions.js     # transaction CRUD, filtering, deduplication
   ui.js               # rendering, sorting, summary updates
