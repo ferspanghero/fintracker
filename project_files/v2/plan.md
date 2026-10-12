@@ -204,10 +204,7 @@ Update TODO tests to assert correct behavior as each bug is fixed.
 
 ## Deferred
 
-- Magic strings (low risk, stable)
-- Recursive `processFiles` (correct, bounded)
-- Accessibility (nice-to-have for personal tool)
-- DOM/E2E tests (unit + integration sufficient)
+Deferred work is tracked in [`project_files/backlog.md`](../backlog.md).
 
 ---
 

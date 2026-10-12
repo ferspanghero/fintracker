@@ -31,7 +31,7 @@ All UI text is English. Category names stay as they are in the data (Portuguese)
   212 duplicates skipped · 9 matched the ignore list · 0 errors
   ```
 
-- Every category dropdown (filter, inline row editor, Add Transaction form) reads the Settings category list. "+ Add New Category" in the form adds to that same list, with the same validation as Settings.
+- Every category dropdown (filter, inline row editor, Add Transaction form) reads the Settings category list. "+ Add New Category" in the form adds to that same list, under the transaction's own type (income or expense), with the same validation as Settings. A bulk category edit skips selected rows of the other type.
 
 ### Balance Sheet tab
 
@@ -42,7 +42,7 @@ Year [2026 ▾]   Balances in each asset's own currency; totals in CAD. Click a 
                      │ ✓ Closed │ ✓ Closed │   │ ✓ Closed │ Open       │ Open │ Open ║
                      │ [Reopen] │ [Reopen] │   │ [Reopen] │[Copy prev.]│      │      ║
 ASSETS (END OF MONTH)
-  <asset> [BRL]      │ 5,909    │ 6,120    │ … │ 12,206   │ ·          │ ·    │ ·    ║
+  <asset> [BRL]      │ 4,120    │ 4,350    │ … │ 5,080    │ ·          │ ·    │ ·    ║
   <asset> [USD]      │ …
   <asset> [CAD] archived (only in years it had a balance)
 Net worth (CAD)      │ $…       │ $…       │ … │ $…       │            │      │      ║
@@ -57,16 +57,16 @@ Indicators 2026: Net worth at start of year · Current net worth · Net worth ch
 Total expenses · Total saved · Investment returns · Saving rate · Expense change vs last year
 ```
 
-- **Closed month:** green header marked "✓ Closed" with a Reopen button and a faint green column tint. **Open month:** grey header marked "Open"; its balances render dim italic. Closing only changes the visual state and whether the month counts in **Average**. Balances stay editable; import is never affected.
-- **Balance cell:** click to edit; the value is in the asset's currency, may be negative, and blank clears it. Cells show whole units; hovering shows the exact value and its CAD equivalent.
-- **Copy prev.:** shown on the first month up to the current one that has no balances while the month before it does. It copies that month's balances for every non-archived asset.
+- **Closed month:** green header marked "✓ Closed" with a Reopen button and a faint green column tint. **Open month:** grey header marked "Open"; its balances render dim italic, and a Close button appears once the month has balances. Closing only changes the visual state and whether the month counts in **Average**. Balances stay editable; import is never affected.
+- **Balance cell:** click to edit; the value is in the asset's currency, may be negative, and blank clears it. Commas are accepted only as thousands separators (`1,234.56`); anything else, such as `1234,56`, is refused rather than misread. Cells show whole units; hovering shows the exact value and its CAD equivalent.
+- **Copy prev.:** shown on the first month up to the current one that has no balances while the month before it has balances for at least one non-archived asset. It copies those balances.
 
 ### Settings tab
 
-- **Exchange Rates:** editable USD → CAD and BRL → CAD fields (saved on change; positive numbers only) and a **Refresh Rates** button that pulls the latest Bank of Canada daily rate for both. A note shows the rate date and when it was refreshed. On failure: "Couldn't reach the Bank of Canada. Rates unchanged."
+- **Exchange Rates:** editable USD → CAD and BRL → CAD fields (saved on change; positive numbers only) and a **Refresh Rates** button that pulls the latest Bank of Canada daily rate for both. A note shows the rate date and when it was refreshed; editing a rate by hand clears that date and the note reads "Entered manually." On failure: "Couldn't reach the Bank of Canada. Rates unchanged."
 - **Categories:** expense and income chips. Add (trimmed, non-empty, unique per type, case-insensitive); × removes, disabled while any transaction uses the category (tooltip shows the count). Sem Categoria is fixed.
 - **Assets:** table of name, currency (CAD / USD / BRL) and archived. Add, rename (unique, non-empty), change currency, archive/unarchive. Never deleted.
-- **Backup & Restore:** **Download Backup** saves `fintracker-backup-YYYY-MM-DD.json`. **Restore from File…** validates the file, shows a summary dialog ("3,643 transactions, 25 assets, 21 months of balances. This replaces all current data."), and replaces everything on confirm. An invalid file lists what is wrong and changes nothing.
+- **Backup & Restore:** **Download Backup** saves `fintracker-backup-YYYY-MM-DD.json`. **Restore from File…** validates the file, shows a summary dialog ("1,234 transactions, 5 assets, 12 months of balances. This replaces all current data."), and replaces everything on confirm. An invalid file lists what is wrong and changes nothing.
 
 ### Primary workflow (monthly close)
 
@@ -124,7 +124,7 @@ Pure modules (`balance-sheet.js`, `settings.js`, `rates.js`, `backup.js`) take d
 }
 ```
 
-Validation (all errors collected, none applied on failure): `app === 'fintracker'`; `version === 1`; settings shape (finite positive or null rates; category arrays of non-empty unique strings each containing `Sem Categoria`; assets with unique ids and names and a supported currency); every transaction has a parseable date, non-empty description, finite non-negative amount, `type` in income/expense, a category string present in the settings list for its type, and an account string; balance keys match `^\d{4}-(0[1-9]|1[0-2])$`, inner keys are known asset ids, values finite; `closedMonths` are valid month keys without duplicates.
+Validation (all errors collected, none applied on failure): `app === 'fintracker'`; `version === 1`; settings shape (finite positive or null rates, a text or null rate date and a valid or null refresh time; category arrays of non-empty unique strings each containing `Sem Categoria`; assets with unique ids and names and a supported currency); every transaction has a parseable date, non-empty description, finite amount (the amount editor allows negatives), `type` in income/expense, a category string present in the settings list for its type, and an account string; balance keys match `^\d{4}-(0[1-9]|1[0-2])$`, inner keys are known asset ids, values finite; `closedMonths` are valid month keys without duplicates.
 
 ## Phase 1 — Settings, state & storage
 
@@ -152,8 +152,8 @@ Validation (all errors collected, none applied on failure): `app === 'fintracker
 - `months[12]`: `{ key, closed, hasBalances, canCopyPrevious }`
 - `assetRows`: assets visible this year — any balance entry in the year, or not archived and `year >= today's year` — each with 12 native values (`null` = blank) and 12 CAD values.
 - `netWorth[12]`: Σ native × rate (CAD = 1) for months with ≥1 entry; `null` otherwise; `missingRates` lists currencies used without a rate (net worth shows "—" plus a "Set rates in Settings" note).
-- `income` and one `expense` row per `settings.categories.expense`, plus `totalExpenses` and `netIncome`. Monthly values cover months ≤ the current month (by local transaction date), `null` after. Each flow row carries `total`, `average` (mean over the year's closed months), `prevAverage` (mean over the previous year's closed months, `null` if none), `diffPct` (`average / prevAverage − 1`, `null` when undefined).
-- `indicators`: `startNetWorth` (latest month with balances before the year), `currentNetWorth` (latest month with balances in the year), `change`, `changePct`, `totalIncome`, `totalExpenses`, `saved`, `returns = change − saved`, `savingRate = saved / totalIncome`, `expenseChangePct` (total-expenses `diffPct`).
+- `income` and one `expense` row per `settings.categories.expense`, plus `totalExpenses` and `netIncome`. Monthly values cover months ≤ the current month (by local transaction date), `null` after. Each flow row carries `total`, `average` (mean over the year's closed months), `prevAverage` (mean over the previous year's closed months, `null` if none), `diffPct` (`(average − prevAverage) / |prevAverage|`, so a negative base keeps the sign meaningful; `null` when undefined).
+- `indicators`: `startNetWorth` (latest month with balances before the year), `currentNetWorth` (latest month with balances in the year), `change`, `changePct`, `totalIncome`, `totalExpenses`, `saved`, `returns = change −` the net income of the months after the start month up to the current month (the same span as `change`), `savingRate = saved / totalIncome`, `expenseChangePct` (total-expenses `diffPct`).
 - Helpers: `copyPreviousMonth(balances, key, settings)`, `setBalance(balances, key, assetId, raw)` (parses, validates, deletes on blank), `toggleClosed(closedMonths, key)`.
 
 ### UI (`js/balance-sheet-ui.js`)
@@ -174,7 +174,7 @@ Validation (all errors collected, none applied on failure): `app === 'fintracker
 ## Phase 5 — End-to-end tests (Playwright)
 
 - `package.json`: devDependency `@playwright/test` pinned to `1.60.0` (matches the browser builds already cached locally, so no browser download); script `"test:e2e": "playwright test"`.
-- `playwright.config.js`: `testDir: 'tests/e2e'`, Chromium only, `webServer` = `node tests/e2e/static-server.mjs` on port 3100 (a ~25-line `node:http` static server, no dependency).
+- `playwright.config.js`: `testDir: 'tests/e2e'`, Chromium only, `webServer` = `node tests/e2e/static-server.mjs` on port 3100 (a small `node:http` static server, no dependency) that answers only `127.0.0.1:3100` / `localhost:3100` hosts and serves only `index.html`, `styles.css` and `js/`, never the personal keywords file.
 - `vitest.config.js`: exclude `tests/e2e/**`. `.gitignore`: `test-results/`, `playwright-report/`.
 - Specs seed LocalStorage through `page.addInitScript` with synthetic data only, and mock the Bank of Canada call with `page.route`.
 
@@ -182,9 +182,9 @@ Validation (all errors collected, none applied on failure): `app === 'fintracker
 
 A throwaway script in the session scratchpad, never committed (it reads personal workbooks):
 
-1. Input: a Backup downloaded from the v3 app plus the yearly balance-sheet workbooks from the start of FinTracker data onward.
-2. Output: a Backup JSON with `settings.categories` (current category list), `settings.assets` (one per workbook asset row, currency from the row's conversion formula, archived when the latest balance is zero), current Bank of Canada rates, `balances` for every closed workbook month, and `closedMonths`.
-3. Checks: every native balance equals its workbook cell; per-month income and expense totals from transactions equal the workbook's linked values; any cell mixing currencies is reported for a manual decision.
+1. Input: the transactions (an all-time FinTracker CSV export or a Backup downloaded from the v3 app) plus the yearly balance-sheet workbooks from the start of FinTracker data onward.
+2. Output: a Backup JSON with `settings.categories` (the categories the transactions use plus any the user wants kept), `settings.assets` (one per workbook asset row, currency from the row's conversion formula, archived when the latest balance is zero), current Bank of Canada rates, `balances` for every closed workbook month, and `closedMonths`.
+3. Checks: every native balance equals its workbook cell; per-month income and expense totals from transactions equal the expense-control sheets the workbook links to (read directly, since the workbook's cached copies of linked values can be stale); any cell mixing currencies is reported for a manual decision.
 4. The user restores the file in the app.
 
 ## Phase 7 — Docs
@@ -215,9 +215,10 @@ js/
   parsers/bradesco.js parsers/fintracker.js                  (modified)
 tests/
   balance-sheet.test.js balance-sheet-ui.test.js settings.test.js settings-ui.test.js
-  rates.test.js backup.test.js tabs.test.js                  (new)
-  existing *.test.js + helpers/dom-fixture.js                (updated)
-  e2e/static-server.mjs  e2e/*.spec.js                       (new)
+  rates.test.js backup.test.js tabs.test.js state.test.js    (new)
+  fixtures/sample-categories.js                              (new)
+  existing *.test.js + helpers/dom-fixture.js + helpers/setup.js  (updated; the DOM fixture is read from index.html)
+  e2e/static-server.mjs  e2e/helpers.js  e2e/*.spec.js       (new)
 README.md  CLAUDE.md  project_files/overview.md              (modified)
 ```
 
@@ -266,10 +267,6 @@ Phase 3 + 4 → Phase 5 (E2E) → Phase 6 (history import, outside the repo) →
 (balance-sheet.js, rates.js and backup.js are independent pure modules and can be built in any order after Phase 1)
 ```
 
-## Out of Scope / Follow-ups
+## Out of Scope
 
-- SQL storage (storage stays behind `storage.js` so it can be swapped).
-- Retirement/FIRE projections (the spreadsheet's second sheet), to be redesigned.
-- Budgets / spending limits per category.
-- LLM categorizer or a learned description → category map, with the keyword engine as fallback.
-- Light-theme toggle; asset reordering; per-month historical exchange rates.
+Deferred work is tracked in [`project_files/backlog.md`](../backlog.md).

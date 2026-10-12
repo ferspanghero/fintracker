@@ -2,7 +2,7 @@
 
 Browser-only personal finance tracker: imports bank CSVs, auto-categorizes transactions, persists to LocalStorage. Vanilla ES modules, no build step, no runtime dependencies.
 
-Read `README.md` for setup, usage, and supported banks, and `project_files/overview.md` for the architecture and test scenarios — don't duplicate those here.
+Read `README.md` for setup, usage, and supported banks, `project_files/overview.md` for the architecture, the latest `project_files/v*/plan.md` for test scenarios, and `project_files/backlog.md` for deferred work — don't duplicate those here.
 
 ## Commands
 

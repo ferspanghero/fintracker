@@ -69,7 +69,7 @@
 
 ## Phase 6 — One-time history import (outside the repo)
 
-- [x] **H1**: Scratchpad script: app Backup + yearly workbooks → Backup JSON with categories, assets, rates, balances, closed months
+- [x] **H1**: Scratchpad script: transactions (all-time export or app Backup) + yearly workbooks → Backup JSON with categories, assets, rates, balances, closed months
 - [x] **H2**: Checks — native balances equal workbook cells; monthly income/expense totals match; mixed-currency cells reported
 - [x] **H3**: User restores the file in the app and spot-checks
 

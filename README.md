@@ -120,6 +120,10 @@ tests/
   *.test.js           # unit and integration tests (one per module)
 tools/
   category-benchmark/ # category match benchmark utility
+project_files/
+  overview.md         # architecture, data model, parser contract
+  backlog.md          # deferred work
+  v*/                 # per-version plan and tasks
 index.html
 styles.css
 playwright.config.js
