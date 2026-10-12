@@ -4,7 +4,8 @@ import { getTransactionKey } from '../js/import-export.js';
 import { renderTransactions } from '../js/ui.js';
 import { populateTransactionCategorySelect } from '../js/categories.js';
 import { transactions, currentFilter, currentSort } from '../js/state.js';
-import { categories } from '../js/categories.js';
+import { settings } from '../js/state.js';
+import { UNCATEGORIZED } from '../js/category-engine.js';
 import {
     addTransactionModal, transactionDateInput, transactionDescriptionInput,
     transactionAmountInput, transactionAccountSelect, transactionCategorySelect,
@@ -225,7 +226,7 @@ describe('handleAddTransaction', () => {
         if (category) {
             transactionCategorySelect.value = category;
         } else {
-            transactionCategorySelect.value = categories[type][0];
+            transactionCategorySelect.value = settings.categories[type][0];
         }
     }
 
@@ -254,12 +255,10 @@ describe('handleAddTransaction', () => {
         fillForm({});
         transactionCategorySelect.value = 'new';
         newCategoryNameInput.value = 'Custom Category';
-        // Set category type radio
-        document.querySelector('input[name="category-type"][value="expense"]').checked = true;
 
         handleAddTransaction(new Event('submit', { cancelable: true }));
         expect(transactions[0].category).toBe('Custom Category');
-        expect(categories.expense).toContain('Custom Category');
+        expect(settings.categories.expense).toContain('Custom Category');
     });
 
     it('alerts when new category name is empty', () => {
@@ -269,9 +268,83 @@ describe('handleAddTransaction', () => {
         newCategoryNameInput.value = '';
 
         handleAddTransaction(new Event('submit', { cancelable: true }));
-        expect(alertSpy).toHaveBeenCalledWith('Please enter a name for the new category.');
+        expect(alertSpy).toHaveBeenCalledWith('Enter a category name.');
         expect(transactions.length).toBe(0);
         alertSpy.mockRestore();
+    });
+});
+
+describe('handleAddTransaction category rules', () => {
+    it('rejects a new category that already exists in another case and adds nothing', () => {
+        // Arrange
+        const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+        populateTransactionCategorySelect();
+        transactionDescriptionInput.value = 'Test';
+        transactionAmountInput.value = '10';
+        transactionCategorySelect.value = 'new';
+        newCategoryNameInput.value = 'casa';
+
+        // Act
+        handleAddTransaction(new Event('submit', { cancelable: true }));
+
+        // Assert
+        expect(alertSpy).toHaveBeenCalledWith('"Casa" already exists.');
+        expect(transactions).toHaveLength(0);
+        expect(settings.categories.expense.filter(c => c.toLowerCase() === 'casa')).toEqual(['Casa']);
+        alertSpy.mockRestore();
+    });
+
+    it('adds a new category to the list of the transaction type', () => {
+        // Arrange
+        document.querySelector('input[name="amount-type"][value="income"]').checked = true;
+        populateTransactionCategorySelect();
+        transactionDescriptionInput.value = 'Bonus';
+        transactionAmountInput.value = '10';
+        transactionDateInput.value = '2026-10-01';
+        transactionCategorySelect.value = 'new';
+        newCategoryNameInput.value = 'Bonus';
+
+        // Act
+        handleAddTransaction(new Event('submit', { cancelable: true }));
+
+        // Assert
+        expect(settings.categories.income).toContain('Bonus');
+        expect(settings.categories.expense).not.toContain('Bonus');
+        expect(transactions[0]).toMatchObject({ type: 'income', category: 'Bonus' });
+    });
+
+    it('files a transaction with no category under Sem Categoria', () => {
+        // Arrange
+        populateTransactionCategorySelect();
+        transactionDescriptionInput.value = 'Test';
+        transactionAmountInput.value = '10';
+        transactionCategorySelect.value = '';
+        transactionDateInput.value = '2026-10-01';
+
+        // Act
+        handleAddTransaction(new Event('submit', { cancelable: true }));
+
+        // Assert
+        expect(transactions[0].category).toBe(UNCATEGORIZED);
+    });
+});
+
+describe('updateTransactionField category rules', () => {
+    it('applies a bulk category change only to selected rows of the same type', () => {
+        // Arrange
+        transactions.push(
+            { date: new Date(2026, 0, 1), description: 'A', amount: 1, type: 'expense', category: 'Casa', account: 'TD' },
+            { date: new Date(2026, 0, 2), description: 'B', amount: 1, type: 'expense', category: 'Casa', account: 'TD' },
+            { date: new Date(2026, 0, 3), description: 'C', amount: 1, type: 'income', category: 'Trabalho', account: 'TD' }
+        );
+        renderTransactions();
+        document.querySelectorAll('.transaction-checkbox').forEach(cb => { cb.checked = true; });
+
+        // Act
+        updateTransactionField(0, 'category', 'Mercado');
+
+        // Assert
+        expect(transactions.map(t => t.category)).toEqual(['Mercado', 'Mercado', 'Trabalho']);
     });
 });
 

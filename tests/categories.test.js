@@ -1,44 +1,65 @@
 import { describe, it, expect, vi } from 'vitest';
-import { defaultCategories, categories, categoryKeywords, categorizeTransaction, populateCategoryDropdowns, populateTransactionCategorySelect, handleCategorySelectChange, handleCategoryFilterChange } from '../js/categories.js';
+import { categoryKeywords, categorizeTransaction, populateCategoryDropdowns, populateTransactionCategorySelect, handleCategorySelectChange, handleCategoryFilterChange } from '../js/categories.js';
 import { categorySelect, transactionCategorySelect, newCategoryGroup } from '../js/dom.js';
-import { currentFilter } from '../js/state.js';
+import { currentFilter, settings } from '../js/state.js';
+import { emptySettings } from '../js/settings.js';
+import { UNCATEGORIZED } from '../js/category-engine.js';
 
 describe('static data', () => {
-    it('defaultCategories has expense and income keys', () => {
-        expect(defaultCategories).toHaveProperty('expense');
-        expect(defaultCategories).toHaveProperty('income');
-    });
-
-    it('expense categories include standard set', () => {
-        expect(defaultCategories.expense).toContain('Casa');
-        expect(defaultCategories.expense).toContain('Mercado');
-        expect(defaultCategories.expense).toContain('Alimentação');
-        expect(defaultCategories.expense).toContain('Sem Categoria');
-    });
-
-    it('income categories include standard set', () => {
-        expect(defaultCategories.income).toContain('Trabalho');
-        expect(defaultCategories.income).toContain('Investimento');
-        expect(defaultCategories.income).toContain('Sem Categoria');
-    });
-
-    it('categories is a deep clone of defaultCategories', () => {
-        expect(categories).toEqual(defaultCategories);
-        expect(categories).not.toBe(defaultCategories);
-    });
-
     it('categoryKeywords has expense and income keys', () => {
         expect(categoryKeywords).toHaveProperty('expense');
         expect(categoryKeywords).toHaveProperty('income');
     });
+});
 
-    it('all category keyword keys match known categories', () => {
-        Object.keys(categoryKeywords.expense).forEach(key => {
-            expect(defaultCategories.expense).toContain(key);
-        });
-        Object.keys(categoryKeywords.income).forEach(key => {
-            expect(defaultCategories.income).toContain(key);
-        });
+describe('categorizeTransaction with the Settings category list', () => {
+    it('never returns a category missing from Settings', () => {
+        // Arrange
+        settings.categories.expense = ['Mercado', UNCATEGORIZED];
+
+        // Act, Assert
+        expect(categorizeTransaction('hotel booking', 'expense')).toBe(UNCATEGORIZED);
+        expect(categorizeTransaction('COSTCO WHOLESALE', 'expense')).toBe('Mercado');
+    });
+
+    it('follows categories added to Settings at runtime', () => {
+        // Arrange
+        settings.categories.expense = [UNCATEGORIZED];
+        const before = categorizeTransaction('COSTCO WHOLESALE', 'expense');
+
+        // Act
+        settings.categories.expense.unshift('Mercado');
+
+        // Assert
+        expect(before).toBe(UNCATEGORIZED);
+        expect(categorizeTransaction('COSTCO WHOLESALE', 'expense')).toBe('Mercado');
+    });
+
+    it('routes an income matching an expense keyword to Reembolso when it exists', () => {
+        // Act, Assert
+        expect(categorizeTransaction('COSTCO WHOLESALE', 'income')).toBe('Reembolso');
+    });
+
+    it('leaves that income uncategorized when Reembolso is not in Settings', () => {
+        // Arrange
+        settings.categories.income = ['Trabalho', UNCATEGORIZED];
+
+        // Act, Assert
+        expect(categorizeTransaction('COSTCO WHOLESALE', 'income')).toBe(UNCATEGORIZED);
+    });
+
+    it('returns Sem Categoria for an unknown type', () => {
+        // Act, Assert
+        expect(categorizeTransaction('COSTCO WHOLESALE', 'transfer')).toBe(UNCATEGORIZED);
+    });
+
+    it('categorizes everything as Sem Categoria on a fresh install', () => {
+        // Arrange
+        settings.categories = emptySettings().categories;
+
+        // Act, Assert
+        expect(categorizeTransaction('COSTCO WHOLESALE', 'expense')).toBe(UNCATEGORIZED);
+        expect(categorizeTransaction('PAYROLL DEPOSIT', 'income')).toBe(UNCATEGORIZED);
     });
 });
 
@@ -117,7 +138,7 @@ describe('populateCategoryDropdowns', () => {
         populateCategoryDropdowns();
         const expenseOptgroup = categorySelect.querySelector('optgroup[label="Expenses"]');
         const options = expenseOptgroup.querySelectorAll('option');
-        categories.expense.forEach(cat => {
+        settings.categories.expense.forEach(cat => {
             const found = Array.from(options).some(opt => opt.value === cat);
             expect(found).toBe(true);
         });
@@ -127,7 +148,7 @@ describe('populateCategoryDropdowns', () => {
         populateCategoryDropdowns();
         const incomeOptgroup = categorySelect.querySelector('optgroup[label="Income"]');
         const options = incomeOptgroup.querySelectorAll('option');
-        categories.income.forEach(cat => {
+        settings.categories.income.forEach(cat => {
             const found = Array.from(options).some(opt => opt.value === cat);
             expect(found).toBe(true);
         });
@@ -139,7 +160,7 @@ describe('populateTransactionCategorySelect', () => {
         populateTransactionCategorySelect();
         const options = Array.from(transactionCategorySelect.options);
         // First is placeholder, last is "new"
-        categories.expense.forEach(cat => {
+        settings.categories.expense.forEach(cat => {
             const found = options.some(opt => opt.value === cat);
             expect(found).toBe(true);
         });
@@ -164,7 +185,7 @@ describe('populateTransactionCategorySelect', () => {
         incomeRadio.checked = true;
         populateTransactionCategorySelect();
         const options = Array.from(transactionCategorySelect.options);
-        categories.income.forEach(cat => {
+        settings.categories.income.forEach(cat => {
             const found = options.some(opt => opt.value === cat);
             expect(found).toBe(true);
         });
@@ -199,5 +220,19 @@ describe('handleCategoryFilterChange', () => {
 
         handleCategoryFilterChange();
         expect(currentFilter.category).toBe('Casa');
+    });
+});
+
+describe('dropdowns follow the Settings category list', () => {
+    it('lists a category added to Settings', () => {
+        // Arrange
+        settings.categories.expense = ['Pets', UNCATEGORIZED];
+
+        // Act
+        populateCategoryDropdowns();
+
+        // Assert
+        const values = Array.from(categorySelect.querySelectorAll('optgroup[label="Expenses"] option')).map(o => o.value);
+        expect(values).toEqual(['Pets', UNCATEGORIZED]);
     });
 });

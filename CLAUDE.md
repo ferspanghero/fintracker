@@ -11,6 +11,7 @@ npx serve . -l 3000                                        # run the app (http:/
 npm test                                                   # run tests once
 npm run test:watch                                         # watch mode
 npm run test:coverage                                      # coverage report
+npm run test:e2e                                           # Playwright end-to-end specs (Chromium)
 node tools/category-benchmark/run-category-benchmark.mjs   # categorizer match rate vs ground truth
 ```
 
@@ -23,8 +24,13 @@ js/category-engine.js   # pure categorization: keyword map + matcher, no DOM dep
 js/personal-keywords.js # gitignored local overrides (template: personal-keywords.example.js)
 js/categories.js        # loads the merged keyword map, wraps the categorizer, drives dropdowns
 js/ignore-rules.js      # import ignore list: generic prefixes, personal-file loader, matcher
+js/settings.js          # pure rules for rates, the category list, assets
+js/balance-sheet.js     # pure Balance Sheet model (buildYear + balance helpers)
+js/backup.js            # pure backup format + validateBackup
+js/*-ui.js              # tab rendering/wiring for Balance Sheet and Settings
 js/parsers/             # one module per bank format + a registry
 tests/                  # mirrors js/; fixtures/ holds injectable module fixtures
+tests/e2e/              # Playwright specs, shared helpers, static test server
 tools/category-benchmark/
 ```
 
@@ -36,6 +42,13 @@ tools/category-benchmark/
 - **Auto-detect sees only the file's first line**, lowercased, trimmed, and with double quotes stripped — write `detect()` against that bare text. If a bank export opens with a title or preamble row, the parser's `detect()` must recognize that row, or the file silently falls through to the TD fallback. `hasHeader` skips only line 0, so `parseLine` must return `null` for any further header or metadata rows.
 - **Income vs expense comes from the amount's sign or debit/credit columns, never a bank's type label** — labels miss refunds and other credits (see the parser contract in `project_files/overview.md`).
 - A fresh clone works with zero config: a missing personal-keywords file falls back to generic keywords only.
+- **State is mutated in place.** `state.js` exports are shared references; update them (or call `replaceAll`) — never reassign. `storage.js` is the only LocalStorage reader/writer; loading never writes.
+- **Keep pure modules pure.** `settings.js`, `balance-sheet.js`, `backup.js`, `rates.js`, `category-engine.js` take data (and `today`/`now`/`fetch`) as arguments; DOM work lives in the UI modules.
+- **Every stored transaction category must exist in `settings.categories` for its type** — otherwise the app's own Backup fails `validateBackup`. Any new write path must add the category through `settings.js` or fall back to `Sem Categoria`.
+- **Month keys use local time** (`monthKey`, `dateInputValue` in `utils.js`), never `toISOString()`. Exception: `getTransactionKey` keeps its UTC date — changing it breaks duplicate detection against stored data.
+- **Parsers receive a context:** `parseLine(line, { rates })`; a parser that can't work without it implements `validateContext` to refuse the whole file.
+- **Unit tests start with a sample category list** (`tests/fixtures/sample-categories.js`), and the DOM fixture is read from `index.html` — new element ids only need adding to `index.html` and `dom.js`.
+- **E2E specs use synthetic data only**, a fixed clock, and a mocked Bank of Canada (`tests/e2e/helpers.js`). The test server serves only `index.html`, `styles.css`, and `js/` (never personal keywords). `@playwright/test` is pinned to the version matching the locally cached browsers — don't bump it without checking the browser builds.
 
 ## Categorization rules
 
@@ -45,7 +58,7 @@ The matcher is **case-insensitive substring, first match wins**, scanning catego
 - **Personal keywords are prepended per category**, so they win *within* a category — but they cannot outrank an earlier category. Placing a merchant in the right category matters more than adding the keyword.
 - **Where a keyword belongs:** concepts and well-known brands → `js/category-engine.js`; local merchants, banks, and anything identifying → the gitignored personal file.
 - **Income falls back to `Reembolso`** when a description matches no income keyword but does match an expense keyword — a refund of a purchase, not new income. Don't add merchant names to `income.Trabalho` to force a route; that turns every refund from that merchant into salary.
-- Categories are Brazilian Portuguese and defined in `defaultCategories`; the merged keyword map must only contain those keys.
+- Category names are Brazilian Portuguese (user data); all UI text is English. The user's category list lives in `settings.categories`; the keyword map is a catalog, narrowed to that list at call time, so a route to a category the user doesn't have falls through to the next match.
 
 ## Ignore list rules
 

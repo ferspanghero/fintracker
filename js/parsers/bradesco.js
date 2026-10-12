@@ -18,7 +18,12 @@ export default {
         return parseDMY(dateStr);
     },
 
-    parseLine(line) {
+    // Amounts are converted with the app-wide BRL rate, so a file can't be read without one.
+    validateContext({ rates }) {
+        return rates?.BRL ? null : 'Set the BRL → CAD rate in Settings before importing Bradesco files.';
+    },
+
+    parseLine(line, { rates }) {
         const parts = line.split(';').map(p => p.trim());
 
         // Handle BOM in first field
@@ -50,10 +55,10 @@ export default {
 
         let amount, type;
         if (creditAmount > 0) {
-            amount = BRLtoCAD(creditAmount);
+            amount = BRLtoCAD(creditAmount, rates.BRL);
             type = 'income';
         } else if (debitAmount > 0) {
-            amount = BRLtoCAD(debitAmount);
+            amount = BRLtoCAD(debitAmount, rates.BRL);
             type = 'expense';
         } else {
             return null;

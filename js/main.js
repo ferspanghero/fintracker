@@ -1,13 +1,30 @@
 import { transactionDateInput } from './dom.js';
+import { dateInputValue } from './utils.js';
 import { loadData } from './storage.js';
 import { populateCategoryDropdowns } from './categories.js';
-import { handleDateRangeChange, updateSortIcons } from './ui.js';
+import { handleDateRangeChange, updateSortIcons, renderTransactions, updateSummary } from './ui.js';
 import { addEventListeners } from './events.js';
+import { initTabs } from './tabs.js';
+import { initBalanceSheet, renderBalanceSheet } from './balance-sheet-ui.js';
+import { initSettings, renderSettings } from './settings-ui.js';
+
+// Settings changes (categories, restore) reach the Transactions view right away;
+// the Balance Sheet and Settings re-render whenever their tab is opened.
+function refreshTransactionsView() {
+    populateCategoryDropdowns();
+    renderTransactions();
+    updateSummary();
+}
+
+const TAB_RENDERERS = {
+    'tab-balance-sheet': renderBalanceSheet,
+    'tab-settings': renderSettings
+};
 
 // Initialize the application
 export function init() {
     // Set today's date as default for the transaction form
-    const today = new Date().toISOString().split('T')[0];
+    const today = dateInputValue(new Date());
     transactionDateInput.value = today;
 
     // Load data from local storage
@@ -24,6 +41,9 @@ export function init() {
 
     // Add event listeners
     addEventListeners();
+    initBalanceSheet();
+    initSettings({ onDataChanged: refreshTransactionsView });
+    initTabs({ onActivate: tabId => TAB_RENDERERS[tabId]?.() });
 }
 
 // Why this branch instead of a plain `addEventListener('DOMContentLoaded', init)`:

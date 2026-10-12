@@ -1,5 +1,7 @@
 import { parseYMD } from './date-helpers.js';
 import { parseCSVLine } from '../utils.js';
+import { findCategory, addCategory } from '../settings.js';
+import { UNCATEGORIZED } from '../category-engine.js';
 
 export default {
     id: 'fintracker',
@@ -25,6 +27,10 @@ export default {
         const amount = parseFloat(parts[4]);
         const type = parts[5].toLowerCase();
 
+        if (type !== 'income' && type !== 'expense') {
+            throw new Error(`Invalid type "${parts[5]}"`);
+        }
+
         const date = this.parseDate(dateStr);
         if (!date) return null;
 
@@ -38,10 +44,19 @@ export default {
         };
     },
 
-    afterParse(transaction, { categories }) {
+    // Keeps imported categories inside the Settings list: a known name in another
+    // case takes the stored spelling, an unknown one is added, a blank one is
+    // filed under Sem Categoria.
+    afterParse(transaction, { settings }) {
         const { category, type } = transaction;
-        if (category && !categories[type].includes(category)) {
-            categories[type].push(category);
+        const existing = findCategory(settings, type, category);
+
+        if (existing) {
+            transaction.category = existing;
+        } else if (category.trim()) {
+            transaction.category = addCategory(settings, type, category).name;
+        } else {
+            transaction.category = UNCATEGORIZED;
         }
     }
 };

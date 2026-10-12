@@ -2,18 +2,65 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import {
     loadCategoryKeywords,
     categorizeTransaction,
-    defaultCategories,
+    restrictKeywords,
     UNCATEGORIZED
 } from '../js/category-engine.js';
+import { SAMPLE_CATEGORIES } from './fixtures/sample-categories.js';
 
-describe('defaultCategories', () => {
-    it('exposes expense and income arrays with core entries', () => {
-        expect(Array.isArray(defaultCategories.expense)).toBe(true);
-        expect(Array.isArray(defaultCategories.income)).toBe(true);
-        expect(defaultCategories.expense).toContain('Casa');
-        expect(defaultCategories.expense).toContain(UNCATEGORIZED);
-        expect(defaultCategories.income).toContain('Trabalho');
-        expect(defaultCategories.income).toContain(UNCATEGORIZED);
+describe('keyword catalog', () => {
+    it('omits the retired Internet and Curso expense categories', async () => {
+        // Act
+        const kw = await loadCategoryKeywords();
+
+        // Assert
+        expect(Object.keys(kw.expense)).not.toContain('Internet');
+        expect(Object.keys(kw.expense)).not.toContain('Curso');
+    });
+});
+
+describe('restrictKeywords', () => {
+    const catalog = {
+        expense: { Viagem: ['hotel'], Casa: ['home'], Mercado: ['costco'] },
+        income: { Trabalho: ['payroll'], Reembolso: ['refund'] }
+    };
+
+    it('keeps only allowed categories, in catalog order', () => {
+        // Arrange
+        const allowed = { expense: ['Mercado', 'Viagem', UNCATEGORIZED], income: ['Trabalho'] };
+
+        // Act
+        const restricted = restrictKeywords(catalog, allowed);
+
+        // Assert
+        expect(restricted).toEqual({
+            expense: { Viagem: ['hotel'], Mercado: ['costco'] },
+            income: { Trabalho: ['payroll'] }
+        });
+        expect(Object.keys(restricted.expense)).toEqual(['Viagem', 'Mercado']);
+    });
+
+    it('returns empty maps when nothing is allowed', () => {
+        // Act
+        const restricted = restrictKeywords(catalog, { expense: [UNCATEGORIZED], income: [UNCATEGORIZED] });
+
+        // Assert
+        expect(restricted).toEqual({ expense: {}, income: {} });
+    });
+
+    it('lets a description fall through to the next allowed category', () => {
+        // Arrange
+        const restricted = restrictKeywords(
+            { expense: { Viagem: ['costco travel'], Mercado: ['costco'] }, income: {} },
+            { expense: ['Mercado'], income: [] }
+        );
+
+        // Act, Assert
+        expect(categorizeTransaction('COSTCO TRAVEL', 'expense', restricted)).toBe('Mercado');
+    });
+
+    it('tolerates a missing type in the allowed list', () => {
+        // Act, Assert
+        expect(restrictKeywords(catalog, { expense: ['Casa'] })).toEqual({ expense: { Casa: ['home'] }, income: {} });
     });
 });
 
@@ -46,14 +93,13 @@ describe('loadCategoryKeywords', () => {
         expect(kw.expense.Mercado).toContain('costco');
     });
 
-    it('every category in the merged map is a known default category', async () => {
+    it('the sample test categories cover every catalog category', async () => {
+        // Act
         const kw = await loadCategoryKeywords();
-        Object.keys(kw.expense).forEach(key => {
-            expect(defaultCategories.expense).toContain(key);
-        });
-        Object.keys(kw.income).forEach(key => {
-            expect(defaultCategories.income).toContain(key);
-        });
+
+        // Assert
+        Object.keys(kw.expense).forEach(key => expect(SAMPLE_CATEGORIES.expense).toContain(key));
+        Object.keys(kw.income).forEach(key => expect(SAMPLE_CATEGORIES.income).toContain(key));
     });
 });
 
@@ -118,8 +164,23 @@ describe('categorizeTransaction', () => {
         expect(categorizeTransaction('SENTINEL VINEYARDS', 'expense', kw)).toBe('Alimentação');
     });
 
-    it('does not route "online" descriptions to Internet', () => {
-        expect(categorizeTransaction('ONLINE PURCHASE', 'expense', kw)).not.toBe('Internet');
+    it('does not categorize bare "online" descriptions', () => {
+        expect(categorizeTransaction('ONLINE PURCHASE', 'expense', kw)).toBe(UNCATEGORIZED);
+    });
+
+    it('routes internet bills to Casa', () => {
+        expect(categorizeTransaction('INTERNET BILL PAYMENT SENTINEL', 'expense', kw)).toBe('Casa');
+    });
+
+    it('routes course and training descriptions to Educação', () => {
+        expect(categorizeTransaction('SENTINEL ONLINE COURSE', 'expense', kw)).toBe('Educação');
+        expect(categorizeTransaction('SENTINEL TRAINING CENTRE', 'expense', kw)).toBe('Educação');
+    });
+
+    it('does not route "water" or "network" descriptions to Casa', () => {
+        expect(categorizeTransaction('SENTINEL WATER ST CAFE', 'expense', kw)).toBe('Alimentação');
+        expect(categorizeTransaction('PLAYSTATION NETWORK', 'expense', kw)).toBe('Lazer');
+        expect(categorizeTransaction('SENTINEL WATERFRONT', 'expense', kw)).not.toBe('Casa');
     });
 
     it('routes "sephora" to Saúde rather than matching the "pho" substring', () => {

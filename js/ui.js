@@ -1,4 +1,4 @@
-import { transactions, currentSort, currentFilter } from './state.js';
+import { transactions, currentSort, currentFilter, settings } from './state.js';
 import {
     transactionsBody, selectAllCheckbox, totalIncomeElement,
     totalExpensesElement, netAmountElement, dateRangeSelect,
@@ -6,7 +6,6 @@ import {
 } from './dom.js';
 import { dateStrInputToLocalDate, escapeHTML } from './utils.js';
 import { getFilteredTransactions, updateTransactionField, deleteTransaction } from './transactions.js';
-import { categories } from './categories.js';
 import { UNCATEGORIZED } from './category-engine.js';
 
 // Render transactions
@@ -36,6 +35,13 @@ export function renderTransactions() {
         const amountClass = transaction.type === 'income' ? 'positive' : 'negative';
         const amountDisplay = transaction.type === 'income' ? `$${amountFormatted}` : `-$${amountFormatted}`;
 
+        // A category missing from Settings (e.g. data restored before its category
+        // was added) stays visible instead of silently showing another option.
+        const currentCategory = transaction.category || UNCATEGORIZED;
+        const categoryOptions = settings.categories[transaction.type].includes(currentCategory)
+            ? settings.categories[transaction.type]
+            : [...settings.categories[transaction.type], currentCategory];
+
         // Create cells
         row.innerHTML = `
             <td>
@@ -46,8 +52,8 @@ export function renderTransactions() {
             <td class="editable ${amountClass}" data-field="amount">${escapeHTML(amountDisplay)}</td>
             <td class="editable" data-field="category">
                 <select class="category-edit-dropdown">
-                    ${categories[transaction.type].map(category =>
-                        `<option value="${escapeHTML(category)}" ${category === (transaction.category || UNCATEGORIZED) ? 'selected' : ''}>${escapeHTML(category)}</option>`
+                    ${categoryOptions.map(category =>
+                        `<option value="${escapeHTML(category)}" ${category === currentCategory ? 'selected' : ''}>${escapeHTML(category)}</option>`
                     ).join('')}
                 </select>
             </td>

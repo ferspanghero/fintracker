@@ -29,6 +29,46 @@ export let newCategoryGroup;
 export let newCategoryNameInput;
 export let closeButtons;
 
+// Import result modal
+export let importResultModal;
+export let importResultTitle;
+export let importResultBody;
+export let importResultOkBtn;
+
+// Balance Sheet
+export let bsYearSelect;
+export let bsGrid;
+export let bsRateNote;
+export let bsMessage;
+export let bsIndicatorsTitle;
+export let bsIndicators;
+
+// Settings
+export let rateUsdInput;
+export let rateBrlInput;
+export let refreshRatesBtn;
+export let rateNote;
+export let rateMessage;
+export let categoryChipsExpense;
+export let categoryChipsIncome;
+export let newCategoryTypeSelect;
+export let settingsNewCategoryInput;
+export let addCategoryBtn;
+export let categoryMessage;
+export let assetsBody;
+export let newAssetNameInput;
+export let newAssetCurrencySelect;
+export let addAssetBtn;
+export let assetMessage;
+export let downloadBackupBtn;
+export let restoreBtn;
+export let restoreFileInput;
+export let backupMessage;
+export let restoreModal;
+export let restoreSummary;
+export let restoreConfirmBtn;
+export let restoreCancelBtn;
+
 // New filter elements
 export let textFilterInput;
 export let deleteSelectedBtn;
@@ -62,6 +102,40 @@ export function refreshDom() {
     newCategoryGroup = document.getElementById('new-category-group');
     newCategoryNameInput = document.getElementById('new-category-name');
     closeButtons = document.querySelectorAll('.close');
+    importResultModal = document.getElementById('import-result-modal');
+    importResultTitle = document.getElementById('import-result-title');
+    importResultBody = document.getElementById('import-result-body');
+    importResultOkBtn = document.getElementById('import-result-ok');
+    bsYearSelect = document.getElementById('bs-year');
+    bsGrid = document.getElementById('bs-grid');
+    bsRateNote = document.getElementById('bs-rate-note');
+    bsMessage = document.getElementById('bs-message');
+    bsIndicatorsTitle = document.getElementById('bs-indicators-title');
+    bsIndicators = document.getElementById('bs-indicators');
+    rateUsdInput = document.getElementById('rate-usd');
+    rateBrlInput = document.getElementById('rate-brl');
+    refreshRatesBtn = document.getElementById('refresh-rates-btn');
+    rateNote = document.getElementById('rate-note');
+    rateMessage = document.getElementById('rate-message');
+    categoryChipsExpense = document.getElementById('category-chips-expense');
+    categoryChipsIncome = document.getElementById('category-chips-income');
+    newCategoryTypeSelect = document.getElementById('new-category-type');
+    settingsNewCategoryInput = document.getElementById('settings-new-category');
+    addCategoryBtn = document.getElementById('add-category-btn');
+    categoryMessage = document.getElementById('category-message');
+    assetsBody = document.getElementById('assets-body');
+    newAssetNameInput = document.getElementById('new-asset-name');
+    newAssetCurrencySelect = document.getElementById('new-asset-currency');
+    addAssetBtn = document.getElementById('add-asset-btn');
+    assetMessage = document.getElementById('asset-message');
+    downloadBackupBtn = document.getElementById('download-backup-btn');
+    restoreBtn = document.getElementById('restore-btn');
+    restoreFileInput = document.getElementById('restore-file');
+    backupMessage = document.getElementById('backup-message');
+    restoreModal = document.getElementById('restore-modal');
+    restoreSummary = document.getElementById('restore-summary');
+    restoreConfirmBtn = document.getElementById('restore-confirm-btn');
+    restoreCancelBtn = document.getElementById('restore-cancel-btn');
     textFilterInput = document.getElementById('text-filter');
     deleteSelectedBtn = document.getElementById('delete-selected-btn');
     selectAllCheckbox = document.getElementById('select-all-checkbox');

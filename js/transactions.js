@@ -1,11 +1,13 @@
-import { transactions, currentFilter } from './state.js';
+import { transactions, currentFilter, settings } from './state.js';
 import {
     transactionDateInput, transactionDescriptionInput, transactionAmountInput,
     transactionCategorySelect, transactionAccountSelect, newCategoryGroup,
     newCategoryNameInput, addTransactionModal, transactionsBody
 } from './dom.js';
-import { dateStrInputToLocalDate } from './utils.js';
-import { categories, populateCategoryDropdowns, populateTransactionCategorySelect } from './categories.js';
+import { dateStrInputToLocalDate, dateInputValue } from './utils.js';
+import { populateCategoryDropdowns, populateTransactionCategorySelect } from './categories.js';
+import { addCategory } from './settings.js';
+import { UNCATEGORIZED } from './category-engine.js';
 import { saveData } from './storage.js';
 import { renderTransactions, updateSummary } from './ui.js';
 
@@ -22,7 +24,7 @@ export function openAddTransactionModal() {
     document.getElementById('transaction-form').reset();
 
     // Set today's date as default
-    const today = new Date().toISOString().split('T')[0];
+    const today = dateInputValue(new Date());
     transactionDateInput.value = today;
 
     // Hide new category input
@@ -49,22 +51,16 @@ export function handleAddTransaction(event) {
 
     // Handle new category
     if (category === 'new') {
-        const newCategoryName = newCategoryNameInput.value.trim();
-        const categoryType = document.querySelector('input[name="category-type"]:checked').value;
+        // A new category joins the list of the transaction's own type.
+        const added = addCategory(settings, type, newCategoryNameInput.value);
 
-        if (!newCategoryName) {
-            alert('Please enter a name for the new category.');
+        if (!added.ok) {
+            alert(added.error);
             return;
         }
 
-        // Add new category
-        if (!categories[categoryType].includes(newCategoryName)) {
-            categories[categoryType].push(newCategoryName);
-            saveData();
-            populateCategoryDropdowns();
-        }
-
-        category = newCategoryName;
+        populateCategoryDropdowns();
+        category = added.name;
     }
 
     // Create new transaction
@@ -73,7 +69,7 @@ export function handleAddTransaction(event) {
         description,
         amount,
         type,
-        category: category || 'Outro',
+        category: category || UNCATEGORIZED,
         account
     };
 
@@ -99,6 +95,11 @@ export function updateTransactionField(index, field, value) {
     Array.from(selectedRows).forEach(row =>
         indices.add(parseInt(row.closest('tr').getAttribute('data-index'), 10))
     );
+
+    // A category only fits transactions of its own type, so bulk edits skip the others.
+    if (field === 'category') {
+        [...indices].filter(i => transactions[i].type !== transactions[index].type).forEach(i => indices.delete(i));
+    }
 
     // Update transactions
     indices.forEach(i => {

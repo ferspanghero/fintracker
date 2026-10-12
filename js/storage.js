@@ -1,34 +1,49 @@
-import { transactions } from './state.js';
-import { categories } from './categories.js';
-// Load data from local storage
-export function loadData() {
-    // Load transactions
-    const savedTransactions = localStorage.getItem('transactions');
-    if (savedTransactions) {
-        const parsed = JSON.parse(savedTransactions);
-        transactions.length = 0;
+// The only LocalStorage reader/writer.
+import { transactions, settings, balances, closedMonths, replaceAll } from './state.js';
+import { emptySettings } from './settings.js';
 
-        // Convert date strings to Date objects
-        parsed.forEach(transaction => {
-            transaction.date = new Date(transaction.date);
-            transactions.push(transaction);
-        });
-    }
+const LEGACY_CATEGORIES_KEY = 'categories';
 
-    // Load categories
-    const savedCategories = localStorage.getItem('categories');
-    if (savedCategories) {
-        Object.assign(categories, JSON.parse(savedCategories));
-    }
+function read(key) {
+    const raw = localStorage.getItem(key);
+
+    return raw ? JSON.parse(raw) : null;
 }
 
-// Save data to local storage
+/** Loads all app data from LocalStorage into state; missing keys load as a fresh install. Never writes. */
+export function loadData() {
+    const savedTransactions = read('transactions') ?? [];
+    const savedSettings = read('settings') ?? {};
+
+    replaceAll({
+        transactions: savedTransactions.map(t => ({ ...t, date: new Date(t.date) })),
+        settings: { ...emptySettings(), ...savedSettings },
+        balances: read('balances') ?? {},
+        closedMonths: read('closedMonths') ?? []
+    });
+}
+
+/**
+ * Saves all app data to LocalStorage; alerts instead of throwing when storage is full or disabled.
+ * @returns {boolean} whether everything was saved
+ */
 export function saveData() {
     try {
         localStorage.setItem('transactions', JSON.stringify(transactions));
-        localStorage.setItem('categories', JSON.stringify(categories));
+        localStorage.setItem('settings', JSON.stringify(settings));
+        localStorage.setItem('balances', JSON.stringify(balances));
+        localStorage.setItem('closedMonths', JSON.stringify(closedMonths));
+
+        return true;
     } catch (e) {
         console.error('Failed to save data to localStorage:', e);
         alert('Could not save data. LocalStorage may be full or disabled.');
+
+        return false;
     }
+}
+
+/** Removes keys older versions wrote that the app no longer reads (called by Restore). */
+export function clearLegacyKeys() {
+    localStorage.removeItem(LEGACY_CATEGORIES_KEY);
 }

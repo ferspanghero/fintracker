@@ -7,6 +7,24 @@ export function dateStrInputToLocalDate(dateStrInput) {
     return date;
 }
 
+/**
+ * 'YYYY-MM' for a date's local calendar month.
+ * @param {Date} date
+ * @returns {string}
+ */
+export function monthKey(date) {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+}
+
+/**
+ * 'YYYY-MM-DD' of a date's local calendar day, as a date input expects.
+ * @param {Date} date
+ * @returns {string}
+ */
+export function dateInputValue(date) {
+    return `${monthKey(date)}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
 // Parse CSV line, handling quoted values
 export function parseCSVLine(line) {
     const result = [];
@@ -36,10 +54,14 @@ export function parseCSVLine(line) {
     return result;
 }
 
-export const BRL_TO_CAD_RATE = 0.25;
-
-export function BRLtoCAD(amount) {
-    return amount * BRL_TO_CAD_RATE;
+/**
+ * Converts a BRL amount to CAD.
+ * @param {number} amount in BRL
+ * @param {number} rate CAD per BRL
+ * @returns {number}
+ */
+export function BRLtoCAD(amount, rate) {
+    return amount * rate;
 }
 
 export function escapeHTML(str) {

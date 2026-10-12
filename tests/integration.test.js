@@ -2,10 +2,10 @@ import { describe, it, expect, vi } from 'vitest';
 import { parseCSV, convertTransactionsToCSV } from '../js/import-export.js';
 import { getFilteredTransactions } from '../js/transactions.js';
 import { getTransactionKey } from '../js/import-export.js';
-import { transactions, currentFilter, currentSort } from '../js/state.js';
-import { defaultCategories } from '../js/categories.js';
+import { transactions, currentFilter, currentSort, settings } from '../js/state.js';
+import { emptySettings } from '../js/settings.js';
+import { SAMPLE_CATEGORIES } from './fixtures/sample-categories.js';
 import { transactionsBody, dateRangeSelect } from '../js/dom.js';
-import { BRLtoCAD } from '../js/utils.js';
 import { init } from '../js/main.js';
 
 describe('Integration: CSV import and parsing', () => {
@@ -85,12 +85,13 @@ describe('Integration: CSV import and parsing', () => {
             '01/03/2025;SALARIO;12345;5.000,00;;7.279,37',
             '02/03/2025;MERCADO PAG;67890;;200,00;7.079,37'
         ].join('\n');
+        settings.rates.BRL = 0.3;
 
         const result = parseCSV(csv, 'bradesco');
         // SALDO ANTERIOR has 0 credit and space for debit, should be skipped
         expect(result.transactions.length).toBe(2);
         expect(result.transactions[0].type).toBe('income');
-        expect(result.transactions[0].amount).toBeCloseTo(BRLtoCAD(5000));
+        expect(result.transactions[0].amount).toBeCloseTo(1500);
         expect(result.transactions[1].type).toBe('expense');
     });
 
@@ -112,6 +113,7 @@ describe('Integration: CSV import and parsing', () => {
             '',
             ';;Total;0,00;40,00;451,50;'
         ].join('\r\n');
+        settings.rates.BRL = 0.3;
 
         const result = parseCSV(csv, 'auto');
 
@@ -123,6 +125,28 @@ describe('Integration: CSV import and parsing', () => {
             ['PIX SENTINEL', 'expense']
         ]);
         expect(result.transactions.every(t => t.account === 'Bradesco')).toBe(true);
+    });
+});
+
+describe('Integration: Bradesco without a BRL rate', () => {
+    it('refuses the whole file up front', () => {
+        // Arrange
+        settings.rates.BRL = null;
+        const csv = 'Data;Histórico;Docto.;Crédito (R$);Débito (R$);Saldo (R$)\n01/03/2025;SALARIO;12345;5.000,00;;7.279,37';
+
+        // Act, Assert
+        expect(() => parseCSV(csv, 'auto')).toThrow('Set the BRL → CAD rate in Settings before importing Bradesco files.');
+    });
+
+    it('passes an explicit context through to the parser', () => {
+        // Arrange
+        const csv = 'Data;Histórico;Docto.;Crédito (R$);Débito (R$);Saldo (R$)\n01/03/2025;SALARIO;12345;100,00;;7.279,37';
+
+        // Act
+        const result = parseCSV(csv, 'bradesco', { rates: { BRL: 0.5 } });
+
+        // Assert
+        expect(result.transactions[0].amount).toBeCloseTo(50);
     });
 });
 
@@ -241,7 +265,7 @@ describe('Integration: full init cycle', () => {
             { date: new Date(2025, 3, 12).toISOString(), description: 'Saved', amount: 50, type: 'expense', category: 'Casa', account: 'Amex' }
         ];
         localStorage.setItem('transactions', JSON.stringify(savedTxns));
-        localStorage.setItem('categories', JSON.stringify(defaultCategories));
+        localStorage.setItem('settings', JSON.stringify({ ...emptySettings(), categories: SAMPLE_CATEGORIES }));
 
         // Run init
         init();
@@ -266,7 +290,7 @@ describe('Integration: full init cycle', () => {
             { date: oldDate.toISOString(), description: 'Old', amount: 10, type: 'expense', category: 'Casa', account: 'Amex' }
         ];
         localStorage.setItem('transactions', JSON.stringify(savedTxns));
-        localStorage.setItem('categories', JSON.stringify(defaultCategories));
+        localStorage.setItem('settings', JSON.stringify({ ...emptySettings(), categories: SAMPLE_CATEGORIES }));
 
         init();
 
@@ -277,8 +301,54 @@ describe('Integration: full init cycle', () => {
         expect(rows.length).toBe(0);
     });
 
+    it('re-renders the Balance Sheet when its tab opens and refreshes dropdowns after Settings changes', () => {
+        // Arrange
+        localStorage.setItem('settings', JSON.stringify({ ...emptySettings(), assets: [{ id: 'a', name: 'Savings', currency: 'CAD', archived: false }] }));
+        init();
+
+        // Act
+        document.getElementById('tab-balance-sheet').click();
+        const gridText = document.getElementById('bs-grid').textContent;
+        document.getElementById('tab-settings').click();
+        document.getElementById('settings-new-category').value = 'Pets';
+        document.getElementById('add-category-btn').click();
+
+        // Assert
+        expect(gridText).toContain('Savings');
+        expect(document.getElementById('panel-settings').hidden).toBe(false);
+        expect(Array.from(document.getElementById('category-select').options).map(o => o.value)).toContain('Pets');
+    });
+
     it('defaults to date ascending sort', () => {
         expect(currentSort.field).toBe('date');
         expect(currentSort.direction).toBe('asc');
+    });
+});
+
+describe('Integration: app data always passes backup validation', () => {
+    it('stays restorable after a fresh-install import and a manual transaction', async () => {
+        // Arrange
+        const { replaceAll, settings: liveSettings, balances, closedMonths } = await import('../js/state.js');
+        const { buildBackup, validateBackup } = await import('../js/backup.js');
+        const { populateTransactionCategorySelect } = await import('../js/categories.js');
+        const { handleAddTransaction } = await import('../js/transactions.js');
+        const dom = await import('../js/dom.js');
+        replaceAll({ transactions: [], settings: emptySettings(), balances: {}, closedMonths: [] });
+        const td = parseCSV('12/02/2025,STARBUCKS COFFEE,12.50,,1000.00', 'td');
+        const ft = parseCSV('Date,Description,Category,Account,Amount,Type\n2025-02-03,Gift,presentes,TD,20,expense\n2025-02-04,Gift 2,Presentes,TD,5,expense', 'fintracker');
+        transactions.push(...td.transactions, ...ft.transactions);
+        populateTransactionCategorySelect();
+        dom.transactionDateInput.value = '2025-02-05';
+        dom.transactionDescriptionInput.value = 'Manual';
+        dom.transactionAmountInput.value = '3';
+        dom.transactionCategorySelect.value = '';
+
+        // Act
+        handleAddTransaction(new Event('submit', { cancelable: true }));
+        const backup = JSON.parse(JSON.stringify(buildBackup({ settings: liveSettings, transactions, balances, closedMonths }, new Date())));
+
+        // Assert
+        expect(transactions.map(t => t.category)).toEqual(['Sem Categoria', 'presentes', 'presentes', 'Sem Categoria']);
+        expect(validateBackup(backup).errors).toEqual([]);
     });
 });

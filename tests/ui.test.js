@@ -1,7 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { sortTransactions, renderTransactions, updateSummary, handleDateRangeChange, applyCustomDateFilter, handleSort, updateSortIcons } from '../js/ui.js';
-import { transactions, currentSort, currentFilter } from '../js/state.js';
-import { categories } from '../js/categories.js';
+import { transactions, currentSort, currentFilter, settings } from '../js/state.js';
 import {
     transactionsBody, selectAllCheckbox, totalIncomeElement,
     totalExpensesElement, netAmountElement, dateRangeSelect,
@@ -134,6 +133,34 @@ describe('renderTransactions', () => {
         category: 'Casa',
         account: 'Amex',
         ...overrides
+    });
+
+    it('row category dropdown lists the Settings categories for the type', () => {
+        // Arrange
+        settings.categories.expense = ['Casa', 'Pets', 'Sem Categoria'];
+        transactions.push(makeTxn({ category: 'Pets' }));
+
+        // Act
+        renderTransactions();
+
+        // Assert
+        const select = transactionsBody.querySelector('.category-edit-dropdown');
+        expect(Array.from(select.options).map(o => o.value)).toEqual(['Casa', 'Pets', 'Sem Categoria']);
+        expect(select.value).toBe('Pets');
+    });
+
+    it('keeps a category missing from Settings selectable in its row', () => {
+        // Arrange
+        settings.categories.expense = ['Sem Categoria'];
+        transactions.push(makeTxn({ category: 'Casa' }));
+
+        // Act
+        renderTransactions();
+
+        // Assert
+        const select = transactionsBody.querySelector('.category-edit-dropdown');
+        expect(Array.from(select.options).map(o => o.value)).toEqual(['Sem Categoria', 'Casa']);
+        expect(select.value).toBe('Casa');
     });
 
     it('renders empty table for no transactions', () => {

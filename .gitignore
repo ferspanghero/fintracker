@@ -7,3 +7,13 @@ coverage/
 category-benchmark_*.json
 js/personal-keywords.js
 resources/*
+test-results/
+playwright-report/
+fintracker-*backup*.json
+.env
+.env.*
+*.key
+*.pem
+.idea/
+.DS_Store
+Thumbs.db

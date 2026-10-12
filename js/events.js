@@ -2,7 +2,7 @@ import {
     importBtn, dateRangeSelect, applyDateFilterBtn, categorySelect,
     textFilterInput, addTransactionBtn, exportCsvBtn, clearAllBtn,
     deleteSelectedBtn, selectAllCheckbox, transactionForm,
-    transactionCategorySelect, closeButtons
+    transactionCategorySelect, closeButtons, importResultModal, importResultOkBtn
 } from './dom.js';
 import { currentFilter } from './state.js';
 import { handleImport, exportToCSV } from './import-export.js';
@@ -62,6 +62,11 @@ export function addEventListeners() {
         radio.addEventListener('change', () => {
             populateTransactionCategorySelect();
         });
+    });
+
+    // Import result dialog
+    importResultOkBtn.addEventListener('click', () => {
+        importResultModal.style.display = 'none';
     });
 
     // Close buttons for modals

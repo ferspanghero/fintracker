@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { dateStrInputToLocalDate, parseCSVLine, BRLtoCAD, BRL_TO_CAD_RATE, escapeHTML } from '../js/utils.js';
+import { dateStrInputToLocalDate, parseCSVLine, BRLtoCAD, escapeHTML, monthKey, dateInputValue } from '../js/utils.js';
 
 describe('dateStrInputToLocalDate', () => {
     it('parses YYYY-MM-DD to local date', () => {
@@ -81,26 +81,33 @@ describe('parseCSVLine', () => {
     });
 });
 
+describe('monthKey', () => {
+    it.each([
+        [new Date(2026, 0, 1), '2026-01'],
+        [new Date(2026, 8, 30, 23, 30), '2026-09'],
+        [new Date(2025, 11, 31, 23, 59), '2025-12']
+    ])('keys %s by its local month as %s', (date, expected) => {
+        // Act, Assert
+        expect(monthKey(date)).toBe(expected);
+    });
+});
+
+describe('dateInputValue', () => {
+    it('formats the local calendar day, even late in the evening', () => {
+        // Act, Assert
+        expect(dateInputValue(new Date(2026, 8, 30, 23, 30))).toBe('2026-09-30');
+    });
+});
+
 describe('BRLtoCAD', () => {
-    it('uses the exported BRL_TO_CAD_RATE constant', () => {
-        expect(BRL_TO_CAD_RATE).toBe(0.25);
-        expect(BRLtoCAD(100)).toBe(100 * BRL_TO_CAD_RATE);
-    });
-
-    it('converts positive amount', () => {
-        expect(BRLtoCAD(100)).toBe(25);
-    });
-
-    it('converts zero', () => {
-        expect(BRLtoCAD(0)).toBe(0);
-    });
-
-    it('converts negative amount', () => {
-        expect(BRLtoCAD(-50)).toBe(-12.5);
-    });
-
-    it('converts decimal amount', () => {
-        expect(BRLtoCAD(10.50)).toBeCloseTo(2.625);
+    it.each([
+        [100, 0.25, 25],
+        [0, 0.3, 0],
+        [-50, 0.25, -12.5],
+        [10.5, 0.25, 2.625]
+    ])('converts %d BRL at %d to %d CAD', (amount, rate, expected) => {
+        // Act, Assert
+        expect(BRLtoCAD(amount, rate)).toBeCloseTo(expected);
     });
 });
 

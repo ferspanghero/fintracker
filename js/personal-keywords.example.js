@@ -24,9 +24,7 @@ export const personalKeywords = {
         'Lazer': [],
         'Transporte': [],
         'Educação': [],
-        'Internet': [],
         'Presente': [],
-        'Curso': [],
         'Empréstimo': []
     },
     income: {

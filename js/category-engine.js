@@ -9,37 +9,6 @@
 
 export const UNCATEGORIZED = 'Sem Categoria';
 
-// Default categories in Brazilian Portuguese
-export const defaultCategories = {
-    expense: [
-        'Casa',
-        'Tarifa',
-        'Dívida',
-        'Saúde',
-        'Mercado',
-        'Telefone',
-        'Alimentação',
-        'Vestuário',
-        'Outro',
-        'Lazer',
-        'Viagem',
-        'Transporte',
-        'Educação',
-        'Internet',
-        'Presente',
-        'Curso',
-        'Empréstimo',
-        UNCATEGORIZED
-    ],
-    income: [
-        'Trabalho',
-        'Investimento',
-        'Reembolso',
-        'Outro',
-        UNCATEGORIZED
-    ]
-};
-
 // Generic keywords — concepts and well-known global brands only.
 const genericKeywords = {
     expense: {
@@ -55,7 +24,8 @@ const genericKeywords = {
             'home', 'mortgage', 'property', 'utility', 'insurance',
             'apartment', 'condo', 'real estate', 'housing',
             'repair', 'improvement', 'furniture',
-            'hydro', 'handyman', 'winners', 'canadian tire'
+            'hydro', 'handyman', 'winners', 'canadian tire',
+            'internet', 'service provider'
         ],
         'Tarifa': [
             'tarifa', 'membership', 'annual', 'penalty', 'overdraft', 'tax',
@@ -117,19 +87,12 @@ const genericKeywords = {
         'Educação': [
             'educação', 'education', 'school', 'student', 'college',
             'university', 'tuition', 'workshop', 'seminar', 'textbook',
-            'abebooks'
-        ],
-        'Internet': [
-            'internet', 'network', 'service provider', 'water'
+            'abebooks', 'curso', 'course', 'training', 'learning'
         ],
         'Presente': [
             'presente', 'gift', 'donation', 'present', 'charity',
             'nonprofit', 'contribute', 'support', 'fundraiser',
             'cause', 'organization', 'foundation', 'give', 'donate'
-        ],
-        'Curso': [
-            'curso', 'course', 'class', 'training', 'workshop',
-            'seminar', 'tuition', 'education', 'learning'
         ],
         'Empréstimo': [
             'empréstimo', 'borrowing', 'student loan'
@@ -197,6 +160,25 @@ export async function loadCategoryKeywords(personalKeywordsPath) {
         }
     }
     return merged;
+}
+
+/**
+ * Narrows a keyword map to the categories the user has, keeping catalog order
+ * so first-match-wins precedence is unchanged; a description whose category is
+ * missing falls through to the next allowed category.
+ * @param {{expense: object, income: object}} categoryKeywords map from loadCategoryKeywords
+ * @param {{expense?: string[], income?: string[]}} allowed category names per type
+ * @returns {{expense: object, income: object}}
+ */
+export function restrictKeywords(categoryKeywords, allowed) {
+    const restricted = {};
+    for (const type of ['expense', 'income']) {
+        const names = allowed[type] ?? [];
+        restricted[type] = Object.fromEntries(
+            Object.entries(categoryKeywords[type] ?? {}).filter(([category]) => names.includes(category))
+        );
+    }
+    return restricted;
 }
 
 // Categorize a transaction by scanning a pre-built keyword map.

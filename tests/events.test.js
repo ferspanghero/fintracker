@@ -169,4 +169,17 @@ describe('addEventListeners', () => {
         window.dispatchEvent(event);
         expect(addTransactionModal.style.display).toBe('none');
     });
+
+    it('closes the import result dialog with OK', () => {
+        // Arrange
+        const modal = document.getElementById('import-result-modal');
+        addEventListeners();
+        modal.style.display = 'block';
+
+        // Act
+        document.getElementById('import-result-ok').click();
+
+        // Assert
+        expect(modal.style.display).toBe('none');
+    });
 });

@@ -12,110 +12,208 @@
             <h1>FinTracker</h1>
         </header>
         
-        <div class="controls">
-            <div class="import-section">
-                <h2>Import Data</h2>
-                <div class="file-input">
-                    <label for="csv-file">Import CSV Files:</label>
-                    <input type="file" id="csv-file" accept=".csv" multiple>
-                    <button id="import-btn">Import</button>
+        <nav class="tabs" role="tablist" aria-label="Sections">
+            <button type="button" id="tab-transactions" role="tab" aria-selected="true" aria-controls="panel-transactions">Transactions</button>
+            <button type="button" id="tab-balance-sheet" role="tab" aria-selected="false" aria-controls="panel-balance-sheet">Balance Sheet</button>
+            <button type="button" id="tab-settings" role="tab" aria-selected="false" aria-controls="panel-settings">Settings</button>
+        </nav>
+
+        <section id="panel-transactions" role="tabpanel" aria-labelledby="tab-transactions">
+            <div class="controls">
+                <div class="import-section">
+                    <h2>Import Data</h2>
+                    <div class="file-input">
+                        <label for="csv-file">Import CSV Files:</label>
+                        <input type="file" id="csv-file" accept=".csv" multiple>
+                        <button id="import-btn">Import</button>
+                    </div>
+                    <div class="file-type">
+                        <label for="file-type">File Type:</label>
+                        <select id="file-type">
+                            <option value="auto">Auto-detect</option>
+                            <option value="fintracker">FinTracker Export</option>
+                            <option value="amex">American Express</option>
+                            <option value="mastercard">Mastercard</option>
+                            <option value="simplii">Simplii</option>
+                            <option value="td">TD Bank</option>
+                            <option value="bradesco">Bradesco</option>
+                        </select>
+                    </div>
                 </div>
-                <div class="file-type">
-                    <label for="file-type">File Type:</label>
-                    <select id="file-type">
-                        <option value="auto">Auto-detect</option>
-                        <option value="fintracker">FinTracker Export</option>
-                        <option value="amex">American Express</option>
-                        <option value="mastercard">Mastercard</option>
-                        <option value="simplii">Simplii</option>
-                        <option value="td">TD Bank</option>
-                        <option value="bradesco">Bradesco</option>                        
-                    </select>
-                </div>
-            </div>
             
-            <div class="filter-section">
-                <h2>Filter Data</h2>
-                <div class="date-filter">
-                    <label for="date-range">Date Range:</label>
-                    <select id="date-range">
-                        <option value="all">All Time</option>
-                        <option value="current-month">Current Month</option>
-                        <option value="last-month">Last Month</option>
-                        <option value="two-months-ago">2 Months Ago</option>
-                        <option value="current-year">Current Year</option>
-                        <option value="last-year">Last Year</option>
-                        <option value="custom">Custom Range</option>
-                    </select>
+                <div class="filter-section">
+                    <h2>Filter Data</h2>
+                    <div class="date-filter">
+                        <label for="date-range">Date Range:</label>
+                        <select id="date-range">
+                            <option value="all">All Time</option>
+                            <option value="current-month">Current Month</option>
+                            <option value="last-month">Last Month</option>
+                            <option value="two-months-ago">2 Months Ago</option>
+                            <option value="current-year">Current Year</option>
+                            <option value="last-year">Last Year</option>
+                            <option value="custom">Custom Range</option>
+                        </select>
+                    </div>
+                    <div class="custom-date-range" id="custom-date-container" style="display: none;">
+                        <label for="start-date">From:</label>
+                        <input type="date" id="start-date">
+                        <label for="end-date">To:</label>
+                        <input type="date" id="end-date">
+                        <button id="apply-date-filter">Apply</button>
+                    </div>
+                    <div class="category-filter">
+                        <label for="category-select">Category:</label>
+                        <select id="category-select">
+                            <option value="all">All Categories</option>
+                        </select>
+                    </div>
+                    <div class="text-filter">
+                        <label for="text-filter">Search:</label>
+                        <input type="text" id="text-filter" placeholder="Type to filter transactions...">
+                    </div>
                 </div>
-                <div class="custom-date-range" id="custom-date-container" style="display: none;">
-                    <label for="start-date">From:</label>
-                    <input type="date" id="start-date">
-                    <label for="end-date">To:</label>
-                    <input type="date" id="end-date">
-                    <button id="apply-date-filter">Apply</button>
-                </div>
-                <div class="category-filter">
-                    <label for="category-select">Category:</label>
-                    <select id="category-select">
-                        <option value="all">All Categories</option>
-                    </select>
-                </div>
-                <div class="text-filter">
-                    <label for="text-filter">Search:</label>
-                    <input type="text" id="text-filter" placeholder="Type to filter transactions...">
-                </div>
-            </div>
             
-            <div class="actions-section">
-                <h2>Actions</h2>
-                <button id="add-transaction-btn">Add Transaction</button>
-                <button id="export-csv-btn">Export to CSV</button>
-                <button id="clear-all-btn">Clear All</button>
-                <button id="delete-selected-btn">Delete Selected</button>
+                <div class="actions-section">
+                    <h2>Actions</h2>
+                    <button id="add-transaction-btn">Add Transaction</button>
+                    <button id="export-csv-btn">Export to CSV</button>
+                    <button id="clear-all-btn">Clear All</button>
+                    <button id="delete-selected-btn">Delete Selected</button>
+                </div>
             </div>
-        </div>
         
-        <div class="summary-section">
-            <h2>Summary</h2>
-            <div class="summary-cards">
-                <div class="summary-card income">
-                    <h3>Total Income</h3>
-                    <p id="total-income">$0.00</p>
-                </div>
-                <div class="summary-card expenses">
-                    <h3>Total Expenses</h3>
-                    <p id="total-expenses">$0.00</p>
-                </div>
-                <div class="summary-card net">
-                    <h3>Net</h3>
-                    <p id="net-amount">$0.00</p>
+            <div class="summary-section">
+                <h2>Summary</h2>
+                <div class="summary-cards">
+                    <div class="summary-card income">
+                        <h3>Total Income</h3>
+                        <p id="total-income">$0.00</p>
+                    </div>
+                    <div class="summary-card expenses">
+                        <h3>Total Expenses</h3>
+                        <p id="total-expenses">$0.00</p>
+                    </div>
+                    <div class="summary-card net">
+                        <h3>Net</h3>
+                        <p id="net-amount">$0.00</p>
+                    </div>
                 </div>
             </div>
-        </div>
         
-        <div class="transactions-section">
-            <h2>Transactions</h2>
-            <div class="table-container">
-                <table id="transactions-table">
-                    <thead>
-                        <tr>
-                            <th><input type="checkbox" id="select-all-checkbox"></th>
-                            <th data-sort="date" class="sortable">Date <span class="sort-icon"></span></th>
-                            <th data-sort="description" class="sortable">Description <span class="sort-icon"></span></th>
-                            <th data-sort="amount" class="sortable">Amount <span class="sort-icon"></span></th>
-                            <th data-sort="category" class="sortable">Category <span class="sort-icon"></span></th>
-                            <th data-sort="account" class="sortable">Account <span class="sort-icon"></span></th>
-                            <th data-sort="type" class="sortable">Type <span class="sort-icon"></span></th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="transactions-body">
-                        <!-- Transactions will be added here dynamically -->
-                    </tbody>
-                </table>
+            <div class="transactions-section">
+                <h2>Transactions</h2>
+                <div class="table-container">
+                    <table id="transactions-table">
+                        <thead>
+                            <tr>
+                                <th><input type="checkbox" id="select-all-checkbox"></th>
+                                <th data-sort="date" class="sortable">Date <span class="sort-icon"></span></th>
+                                <th data-sort="description" class="sortable">Description <span class="sort-icon"></span></th>
+                                <th data-sort="amount" class="sortable">Amount <span class="sort-icon"></span></th>
+                                <th data-sort="category" class="sortable">Category <span class="sort-icon"></span></th>
+                                <th data-sort="account" class="sortable">Account <span class="sort-icon"></span></th>
+                                <th data-sort="type" class="sortable">Type <span class="sort-icon"></span></th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="transactions-body">
+                            <!-- Transactions will be added here dynamically -->
+                        </tbody>
+                    </table>
+                </div>
             </div>
-        </div>
+        </section>
+
+        <section id="panel-balance-sheet" role="tabpanel" aria-labelledby="tab-balance-sheet" hidden>
+            <div class="bs-toolbar">
+                <div class="bs-year">
+                    <label for="bs-year">Year</label>
+                    <select id="bs-year"></select>
+                </div>
+                <p class="hint">Balances in each asset's own currency; net worth and totals in CAD. Click a balance to edit; hover to see its exact and CAD value.</p>
+            </div>
+            <p id="bs-rate-note" class="message"></p>
+            <p id="bs-message" class="message" role="alert"></p>
+            <div class="grid-wrap">
+                <table id="bs-grid" class="grid"></table>
+            </div>
+            <h2 id="bs-indicators-title">Indicators</h2>
+            <div id="bs-indicators" class="kpis"></div>
+            <p class="hint">Average uses closed months only; Prev. year avg uses the previous year's closed months. CAD values use the rates in Settings.</p>
+        </section>
+
+        <section id="panel-settings" role="tabpanel" aria-labelledby="tab-settings" hidden>
+            <div class="settings">
+                <div class="box">
+                    <h2>Exchange Rates</h2>
+                    <div class="rate-row">
+                        <label for="rate-usd">USD → CAD</label>
+                        <input type="number" id="rate-usd" step="0.0001" min="0">
+                    </div>
+                    <div class="rate-row">
+                        <label for="rate-brl">BRL → CAD</label>
+                        <input type="number" id="rate-brl" step="0.0001" min="0">
+                    </div>
+                    <button type="button" id="refresh-rates-btn" class="blue">Refresh Rates</button>
+                    <p id="rate-note" class="hint"></p>
+                    <p id="rate-message" class="message" role="alert"></p>
+                    <p class="hint">Used for asset balances and for converting Bradesco imports. Imported transactions keep their CAD amount.</p>
+                </div>
+
+                <div class="box">
+                    <h2>Categories</h2>
+                    <label>Expense</label>
+                    <div id="category-chips-expense" class="chips"></div>
+                    <label>Income</label>
+                    <div id="category-chips-income" class="chips"></div>
+                    <div class="inline">
+                        <select id="new-category-type" aria-label="Category type">
+                            <option value="expense">Expense</option>
+                            <option value="income">Income</option>
+                        </select>
+                        <input type="text" id="settings-new-category" placeholder="New category" aria-label="New category name">
+                        <button type="button" id="add-category-btn">Add</button>
+                    </div>
+                    <p id="category-message" class="message" role="alert"></p>
+                    <p class="hint">× is disabled while transactions use the category. Sem Categoria is the fallback and can't be removed.</p>
+                </div>
+
+                <div class="box wide">
+                    <h2>Assets</h2>
+                    <div class="table-container">
+                        <table class="assets">
+                            <thead>
+                                <tr><th>Name</th><th>Currency</th><th class="ctr">Archived</th></tr>
+                            </thead>
+                            <tbody id="assets-body"></tbody>
+                        </table>
+                    </div>
+                    <div class="inline">
+                        <input type="text" id="new-asset-name" placeholder="New asset name" aria-label="New asset name">
+                        <select id="new-asset-currency" aria-label="New asset currency">
+                            <option value="CAD">CAD</option>
+                            <option value="USD">USD</option>
+                            <option value="BRL">BRL</option>
+                        </select>
+                        <button type="button" id="add-asset-btn">Add Asset</button>
+                    </div>
+                    <p id="asset-message" class="message" role="alert"></p>
+                    <p class="hint">Archived assets stay in the years they had a balance. Assets are never deleted.</p>
+                </div>
+
+                <div class="box wide">
+                    <h2>Backup &amp; Restore</h2>
+                    <div class="inline">
+                        <button type="button" id="download-backup-btn">Download Backup</button>
+                        <button type="button" id="restore-btn" class="plain">Restore from File…</button>
+                        <input type="file" id="restore-file" accept=".json,application/json" hidden>
+                    </div>
+                    <div id="backup-message" class="message" role="alert"></div>
+                    <p class="hint">One JSON file with all app data: settings, transactions, balances and closed months. Restore checks the file first and replaces everything after you confirm.</p>
+                </div>
+            </div>
+        </section>
     </div>
     
     <!-- Add Transaction Modal -->
@@ -154,14 +252,6 @@
                 <div class="form-group" id="new-category-group" style="display: none;">
                     <label for="new-category-name">New Category Name:</label>
                     <input type="text" id="new-category-name">
-                    <div class="radio-group">
-                        <label>
-                            <input type="radio" name="category-type" value="expense" checked> Expense Category
-                        </label>
-                        <label>
-                            <input type="radio" name="category-type" value="income"> Income Category
-                        </label>
-                    </div>
                 </div>
                 <div class="form-group">
                     <label for="transaction-account">Account:</label>
@@ -179,6 +269,29 @@
         </div>
     </div>
     
+    <!-- Import Result Modal -->
+    <div id="import-result-modal" class="modal">
+        <div class="modal-content" role="dialog" aria-labelledby="import-result-title">
+            <span class="close">&times;</span>
+            <h2 id="import-result-title">Import complete</h2>
+            <div id="import-result-body"></div>
+            <button type="button" id="import-result-ok">OK</button>
+        </div>
+    </div>
+
+    <!-- Restore Confirm Modal -->
+    <div id="restore-modal" class="modal">
+        <div class="modal-content" role="dialog" aria-labelledby="restore-title">
+            <span class="close">&times;</span>
+            <h2 id="restore-title">Restore backup</h2>
+            <p id="restore-summary"></p>
+            <div class="inline">
+                <button type="button" id="restore-confirm-btn" class="red">Replace All Data</button>
+                <button type="button" id="restore-cancel-btn" class="plain">Cancel</button>
+            </div>
+        </div>
+    </div>
+
     <script type="module" src="js/main.js"></script>
 </body>
 </html>

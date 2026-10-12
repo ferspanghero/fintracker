@@ -1,13 +1,12 @@
 import { categorySelect, transactionCategorySelect, newCategoryGroup } from './dom.js';
-import { currentFilter } from './state.js';
+import { currentFilter, settings } from './state.js';
 import { renderTransactions, updateSummary } from './ui.js';
 import {
-    defaultCategories,
+    UNCATEGORIZED,
     loadCategoryKeywords,
+    restrictKeywords,
     categorizeTransaction as engineCategorize
 } from './category-engine.js';
-
-export { defaultCategories };
 
 // Path (resolved relative to the js/ loaders: category-engine.js and
 // ignore-rules.js) to the optional gitignored personal-keyword overrides.
@@ -27,12 +26,19 @@ export const PERSONAL_KEYWORDS_PATH = './personal-keywords.js';
 // if you ever change this.
 export const categoryKeywords = await loadCategoryKeywords(PERSONAL_KEYWORDS_PATH);
 
+/**
+ * Categorizes against the Settings category list: keyword routes to categories
+ * the user doesn't have are skipped, and the engine's Reembolso fallback only
+ * stands when Reembolso exists. The list can change at runtime, so the keyword
+ * map is narrowed on every call.
+ * @returns {string} a category present in settings.categories[type]
+ */
 export function categorizeTransaction(description, type) {
-    return engineCategorize(description, type, categoryKeywords);
-}
+    const allowed = settings.categories[type] ?? [];
+    const category = engineCategorize(description, type, restrictKeywords(categoryKeywords, settings.categories));
 
-// Initialize categories (mutable state for UI)
-export let categories = JSON.parse(JSON.stringify(defaultCategories));
+    return allowed.includes(category) ? category : UNCATEGORIZED;
+}
 
 // Populate category dropdowns
 export function populateCategoryDropdowns() {
@@ -43,7 +49,7 @@ export function populateCategoryDropdowns() {
     const expenseOptgroup = document.createElement('optgroup');
     expenseOptgroup.label = 'Expenses';
 
-    categories.expense.forEach(category => {
+    settings.categories.expense.forEach(category => {
         const option = document.createElement('option');
         option.value = category;
         option.textContent = category;
@@ -56,7 +62,7 @@ export function populateCategoryDropdowns() {
     const incomeOptgroup = document.createElement('optgroup');
     incomeOptgroup.label = 'Income';
 
-    categories.income.forEach(category => {
+    settings.categories.income.forEach(category => {
         const option = document.createElement('option');
         option.value = category;
         option.textContent = category;
@@ -75,7 +81,7 @@ export function populateTransactionCategorySelect() {
     const selectedType = document.querySelector('input[name="amount-type"]:checked').value;
 
     // Add categories based on type
-    categories[selectedType].forEach(category => {
+    settings.categories[selectedType].forEach(category => {
         const option = document.createElement('option');
         option.value = category;
         option.textContent = category;
