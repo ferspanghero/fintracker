@@ -7,6 +7,7 @@ import {
 import { dateStrInputToLocalDate, dateInputValue } from './utils.js';
 import { populateCategoryDropdowns, populateTransactionCategorySelect } from './categories.js';
 import { addCategory } from './settings.js';
+import { openModal, closeModal } from './modal.js';
 import { UNCATEGORIZED } from './category-engine.js';
 import { saveData } from './storage.js';
 import { renderTransactions, updateSummary } from './ui.js';
@@ -33,8 +34,7 @@ export function openAddTransactionModal() {
     // Populate category dropdown
     populateTransactionCategorySelect();
 
-    // Show modal
-    addTransactionModal.style.display = 'block';
+    openModal(addTransactionModal);
 }
 
 // Handle add transaction form submission
@@ -78,8 +78,7 @@ export function handleAddTransaction(event) {
 
     saveAndRefresh();
 
-    // Close modal
-    addTransactionModal.style.display = 'none';
+    closeModal(addTransactionModal);
 }
 
 // Update transaction field

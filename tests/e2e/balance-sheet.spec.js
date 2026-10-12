@@ -174,3 +174,100 @@ test('E25 — a missing rate shows a dash and points to Settings', async ({ page
     await expect(monthCell(gridRow(page, 'Net worth'), SEP)).toHaveText('—');
     await expect(page.locator('#bs-rate-note')).toHaveText('Set rates in Settings: USD.');
 });
+
+test('E26 — one click saves the balance being edited and runs the month action', async ({ page }) => {
+    // Arrange
+    await openApp(page, { settings: makeSettings({ assets: [['a', 'Sentinel Savings', 'CAD']] }), balances: { '2026-09': { a: 5 } } });
+    await openTab(page, 'Balance Sheet');
+    await balanceCell(page, '2026-09', 'a').dblclick();
+    await balanceCell(page, '2026-09', 'a').locator('input').fill('7');
+
+    // Act
+    await monthHeader(page, '2026-09').getByRole('button', { name: 'Close' }).click();
+
+    // Assert
+    await expect(monthHeader(page, '2026-09')).toContainText('✓ Closed');
+    await expect(balanceCell(page, '2026-09', 'a')).toHaveText('7');
+    expect(await stored(page, 'balances')).toEqual({ '2026-09': { a: 7 } });
+    expect(await stored(page, 'closedMonths')).toEqual(['2026-09']);
+});
+
+async function openTwoAssetGrid(page) {
+    const assets = [['a', 'Sentinel Savings', 'CAD'], ['b', 'Sentinel Brokerage', 'CAD']];
+    await openApp(page, { settings: makeSettings({ assets }), balances: { '2026-09': { a: 5, b: 1 } } });
+    await openTab(page, 'Balance Sheet');
+}
+
+test('E27 — a click selects a balance; typing replaces it and Enter saves and moves down', async ({ page }) => {
+    // Arrange
+    await openTwoAssetGrid(page);
+    await balanceCell(page, '2026-09', 'a').click();
+    const editorsAfterClick = await balanceCell(page, '2026-09', 'a').locator('input').count();
+
+    // Act
+    await page.keyboard.type('12');
+    await page.keyboard.press('Enter');
+
+    // Assert
+    expect(editorsAfterClick).toBe(0);
+    await expect(balanceCell(page, '2026-09', 'a')).toHaveText('12');
+    await expect(balanceCell(page, '2026-09', 'b')).toBeFocused();
+    expect(await stored(page, 'balances')).toEqual({ '2026-09': { a: 12, b: 1 } });
+});
+
+test('E30 — arrows move the selection; Tab and Shift+Tab save and move sideways', async ({ page }) => {
+    // Arrange
+    await openTwoAssetGrid(page);
+    await balanceCell(page, '2026-09', 'b').click();
+
+    // Act
+    await page.keyboard.press('ArrowUp');
+    await page.keyboard.press('ArrowRight');
+    await page.keyboard.type('3');
+    await page.keyboard.press('Tab');
+    await page.keyboard.type('4');
+    await page.keyboard.press('Shift+Tab');
+
+    // Assert
+    await expect(balanceCell(page, '2026-10', 'a')).toBeFocused();
+    expect(await stored(page, 'balances')).toEqual({ '2026-09': { a: 5, b: 1 }, '2026-10': { a: 3 }, '2026-11': { a: 4 } });
+});
+
+test('E31 — Delete clears a balance; F2 edits the current value and Escape cancels', async ({ page }) => {
+    // Arrange
+    await openTwoAssetGrid(page);
+    await balanceCell(page, '2026-09', 'b').click();
+
+    // Act
+    await page.keyboard.press('Delete');
+    await page.keyboard.press('ArrowUp');
+    await page.keyboard.press('F2');
+    await page.keyboard.type('9');
+    await page.keyboard.press('Escape');
+    await page.keyboard.press('F2');
+    await page.keyboard.type('0');
+    await page.keyboard.press('Enter');
+
+    // Assert
+    await expect(balanceCell(page, '2026-09', 'b')).toHaveText('·');
+    await expect(balanceCell(page, '2026-09', 'a')).toHaveText('50');
+    expect(await stored(page, 'balances')).toEqual({ '2026-09': { a: 50 } });
+});
+
+test('E32 — on a narrow screen the selected cell scrolls clear of the sticky first column', async ({ page }) => {
+    // Arrange
+    await page.setViewportSize({ width: 390, height: 800 });
+    await openTwoAssetGrid(page);
+    await balanceCell(page, '2026-12', 'a').click();
+
+    // Act
+    for (let i = 0; i < 11; i++) {
+        await page.keyboard.press('ArrowLeft');
+    }
+
+    // Assert
+    await expect(balanceCell(page, '2026-01', 'a')).toBeFocused();
+    const stickyRight = await gridRow(page, 'Sentinel Savings').locator('th').evaluate(th => th.getBoundingClientRect().right);
+    const cellLeft = await balanceCell(page, '2026-01', 'a').evaluate(td => td.getBoundingClientRect().left);
+    expect(cellLeft).toBeGreaterThanOrEqual(stickyRight - 1);
+});

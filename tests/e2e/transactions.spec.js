@@ -136,3 +136,25 @@ test('E24 — a category added from the transaction form appears everywhere', as
     // Assert
     await expect(page.locator('#category-chips-expense .chip[data-name="Pets"]')).toBeVisible();
 });
+
+test('E29 — re-importing an export adds only the categories of rows it keeps', async ({ page }) => {
+    // Arrange
+    await openApp(page, { transactions: [tx('2026-09-01', 'SENTINEL VET', 80, 'expense', 'Casa')] });
+    const csv = [
+        'Date,Description,Category,Account,Amount,Type',
+        '2026-09-01,SENTINEL VET,Ghost,TD,80,expense',
+        '2026-09-02,PAYMENT RECEIVED - THANK YOU,Transfers,TD,50,income',
+        '2026-09-03,SENTINEL GROOMER,Pets,TD,40,expense'
+    ].join('\n');
+
+    // Act
+    await importFiles(page, [['export.csv', csv]]);
+
+    // Assert
+    await expect(page.locator('#import-result-body')).toContainText('1 duplicate skipped · 1 matched the ignore list');
+    const { categories } = await stored(page, 'settings');
+    expect(categories.expense).toContain('Pets');
+    expect(categories.expense).not.toContain('Ghost');
+    expect(categories.income).not.toContain('Transfers');
+});
+

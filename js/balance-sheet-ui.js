@@ -1,16 +1,21 @@
 // Balance Sheet tab: renders the yearly grid and indicators from the pure model
-// in balance-sheet.js and handles inline balance editing and month actions.
+// in balance-sheet.js, and handles month actions and spreadsheet-style balance
+// editing: a focused cell is the selection; arrows move it, typing, F2 or a
+// double-click edit it, and Delete clears it.
 
 import { transactions, balances, closedMonths, settings } from './state.js';
 import { bsYearSelect, bsGrid, bsRateNote, bsMessage, bsIndicatorsTitle, bsIndicators } from './dom.js';
-import { saveData } from './storage.js';
+import { saveBalanceSheet } from './storage.js';
 import { buildYear, setBalance, copyPreviousMonth, toggleClosed, availableYears } from './balance-sheet.js';
 import { escapeHTML } from './utils.js';
 import { UNCATEGORIZED } from './category-engine.js';
+import { BASE_CURRENCY } from './constants.js';
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 let selectedYear = null;
+// The balance being edited: { input, finish(commit, focusAfter) → whether it saved cleanly }.
+let activeEdit = null;
 
 const formatNumber = (value, decimals) =>
     value.toLocaleString('en-CA', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
@@ -39,7 +44,7 @@ function monthHeader(month, index) {
         action = `<button type="button" class="blue" data-action="copy-previous">Copy prev.</button>`;
     }
 
-    return `<th class="m ${state}" data-month="${month.key}">
+    return `<th scope="col" class="m ${state}" data-month="${month.key}">
         <span class="mname">${MONTH_NAMES[index]}</span>
         <span class="state">${month.closed ? '✓ Closed' : 'Open'}</span>${action}
     </th>`;
@@ -53,20 +58,21 @@ function assetRow(row, model) {
     const cells = row.values.map((value, i) => {
         const month = model.months[i];
         const tint = month.closed ? ' mc' : '';
-        const attrs = `data-month="${month.key}" data-asset="${escapeHTML(asset.id)}"`;
+        const label = text => `aria-label="${escapeHTML(`${asset.name}, ${monthLabel(month.key)}: ${text}`)}"`;
+        const attrs = `data-month="${month.key}" data-asset="${escapeHTML(asset.id)}" tabindex="0"`;
 
         if (value === null) {
-            return `<td class="edit c-empty${tint}" ${attrs} title="Click to enter">·</td>`;
+            return `<td class="edit c-empty${tint}" ${attrs} ${label('empty')} title="Select and type to enter">·</td>`;
         }
 
-        const cad = row.cad[i] === null || asset.currency === 'CAD' ? '' : ` = CAD ${formatNumber(row.cad[i], 2)}`;
+        const cad = row.cad[i] === null || asset.currency === BASE_CURRENCY ? '' : ` = ${BASE_CURRENCY} ${formatNumber(row.cad[i], 2)}`;
         const title = `${asset.currency} ${formatNumber(value, 2)}${cad}`;
 
-        return `<td class="edit${month.closed ? '' : ' c-open'}${tint}" ${attrs} title="${escapeHTML(title)}">${formatNumber(value, 0)}</td>`;
+        return `<td class="edit${month.closed ? '' : ' c-open'}${tint}" ${attrs} ${label(title)} title="${escapeHTML(title)}">${formatNumber(value, 0)}</td>`;
     }).join('');
 
     return `<tr>
-        <td>${escapeHTML(asset.name)}<span class="cur">${escapeHTML(asset.currency)}</span>${asset.archived ? '<span class="arch">archived</span>' : ''}</td>
+        <th scope="row">${escapeHTML(asset.name)}<span class="cur">${escapeHTML(asset.currency)}</span>${asset.archived ? '<span class="arch">archived</span>' : ''}</th>
         ${cells}${extraCells()}
     </tr>`;
 }
@@ -85,7 +91,7 @@ function netWorthRow(model) {
         return `<td class="${month.closed ? 'mc' : ''}">${text}</td>`;
     }).join('');
 
-    return `<tr class="networth"><td>Net worth (CAD)</td>${cells}${extraCells()}</tr>`;
+    return `<tr class="networth"><th scope="row">Net worth (${BASE_CURRENCY})</th>${cells}${extraCells()}</tr>`;
 }
 
 // `upIsGood` colours Diff %: more income is good, more spending is bad.
@@ -100,7 +106,7 @@ function flowRow(label, row, model, { className = '', upIsGood = false } = {}) {
     }
 
     return `<tr class="${className}">
-        <td>${label}</td>${cells}
+        <th scope="row">${label}</th>${cells}
         <td class="x">${formatNumber(row.total, 2)}</td>
         <td class="x">${optional(row.average)}</td>
         <td class="x">${optional(row.prevAverage)}</td>
@@ -108,27 +114,68 @@ function flowRow(label, row, model, { className = '', upIsGood = false } = {}) {
     </tr>`;
 }
 
+// Each grid row remembers the markup it was built from, so a re-render replaces only
+// the rows that changed: one edit touches its asset row and net worth, not the whole table.
+const builtFrom = new WeakMap();
+
+function updateRows(section, rows) {
+    const template = document.createElement('template');
+
+    rows.forEach((html, i) => {
+        const current = section.rows[i];
+
+        // A row is reused only when untouched since it was built. The editor is the one
+        // in-place change to a row (a rejected value leaves its data the same), so any
+        // other in-place change to cells must be undone or also force a rebuild here.
+        if (current && builtFrom.get(current) === html && !current.querySelector('.editing')) {
+            return;
+        }
+
+        template.innerHTML = html;
+        const fresh = template.content.firstElementChild;
+        builtFrom.set(fresh, html);
+
+        if (current) {
+            current.replaceWith(fresh);
+        } else {
+            section.appendChild(fresh);
+        }
+    });
+
+    while (section.rows.length > rows.length) {
+        section.rows[rows.length].remove();
+    }
+}
+
 function renderGrid(model, year) {
-    const head = `<thead><tr><th>${year}</th>${model.months.map(monthHeader).join('')}
-        <th class="x">Total</th><th class="x">Average</th><th class="x">Prev. year avg</th><th class="x">Diff %</th></tr></thead>`;
+    bsGrid.setAttribute('aria-label', `Balance Sheet ${year}`);
+    const head = `<tr><th scope="col">${year}</th>${model.months.map(monthHeader).join('')}
+        <th class="x">Total</th><th class="x">Average</th><th class="x">Prev. year avg</th><th class="x">Diff %</th></tr>`;
 
     const expenseRows = model.expenses.map(row => {
         const warn = row.category === UNCATEGORIZED && row.values.some(Boolean);
 
         return flowRow(`${escapeHTML(row.category)}${warn ? ' ⚠' : ''}`, row, model, { className: warn ? 'warn' : '' });
-    }).join('');
+    });
 
-    bsGrid.innerHTML = `${head}<tbody>
-        ${sectionRow('Assets (end of month)')}
-        ${model.assetRows.map(row => assetRow(row, model)).join('')}
-        ${netWorthRow(model)}
-        ${sectionRow('Income')}
-        ${flowRow('Total income', model.income, model, { upIsGood: true })}
-        ${sectionRow('Expenses')}
-        ${expenseRows}
-        ${flowRow('Total expenses', model.totalExpenses, model, { className: 'strong' })}
-        ${flowRow('Net income', model.netIncome, model, { className: 'strong', upIsGood: true })}
-    </tbody>`;
+    if (!bsGrid.tHead || bsGrid.tBodies.length !== 1) {
+        bsGrid.innerHTML = '<thead></thead><tbody></tbody>';
+    }
+
+    updateRows(bsGrid.tHead, [head]);
+    updateRows(bsGrid.tBodies[0], [
+        sectionRow('Assets (end of month)'),
+        ...model.assetRows.map(row => assetRow(row, model)),
+        netWorthRow(model),
+        sectionRow('Income'),
+        flowRow('Total income', model.income, model, { upIsGood: true }),
+        sectionRow('Expenses'),
+        ...expenseRows,
+        flowRow('Total expenses', model.totalExpenses, model, { className: 'strong' }),
+        flowRow('Net income', model.netIncome, model, { className: 'strong', upIsGood: true })
+    ]);
+    // A focused cell scrolls clear of the sticky first column instead of under it.
+    bsGrid.parentElement.style.scrollPaddingLeft = `${bsGrid.querySelector('thead th').offsetWidth}px`;
 }
 
 function renderIndicators(model, year) {
@@ -153,6 +200,8 @@ function renderIndicators(model, year) {
 
 /** Renders the year selector, grid and indicators from current state. */
 export function renderBalanceSheet() {
+    // A render replaces any open editor's input, so that edit is over.
+    activeEdit = null;
     const today = new Date();
     const years = availableYears({ transactions, balances, today });
 
@@ -170,81 +219,237 @@ export function renderBalanceSheet() {
 }
 
 function saveAndRender() {
-    saveData();
+    saveBalanceSheet();
     renderBalanceSheet();
 }
 
-function startEdit(cell) {
+// Matched on dataset values so any asset id works without selector escaping.
+const cellFor = (month, asset) =>
+    [...bsGrid.querySelectorAll('td.edit')].find(td => td.dataset.month === month && td.dataset.asset === asset);
+const monthButtonFor = (month, action) =>
+    bsGrid.querySelector(`th[data-month="${month}"] button[data-action="${action}"]`);
+// The stored balance for a cell; own properties only, so an asset id such as "constructor" reads as empty.
+const storedBalance = (month, asset) => (Object.hasOwn(balances[month] ?? {}, asset) ? balances[month][asset] : undefined);
+// The cell to focus after a save: the same cell, or the year selector when saving removed its row.
+const cellOrYear = (month, asset) => cellFor(month, asset) ?? bsYearSelect;
+
+// The balance cell `rows` asset rows and `months` columns away, or null past the grid's edge.
+function neighbourOf(month, asset, rows, months) {
+    const monthKeys = [...bsGrid.querySelectorAll('thead th[data-month]')].map(th => th.dataset.month);
+    const assetIds = [...new Set([...bsGrid.querySelectorAll('td.edit')].map(td => td.dataset.asset))];
+    const monthIndex = monthKeys.indexOf(month);
+    const assetIndex = assetIds.indexOf(asset);
+
+    if (monthIndex === -1 || assetIndex === -1) {
+        return null;
+    }
+
+    const nextMonth = monthKeys[monthIndex + months];
+    const nextAsset = assetIds[assetIndex + rows];
+
+    return nextMonth && nextAsset ? cellFor(nextMonth, nextAsset) : null;
+}
+
+// Keys that move the selection, as [asset rows, months]; Enter moves down and Shift+Enter up.
+const ARROW_MOVES = { ArrowUp: [-1, 0], ArrowDown: [1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1] };
+const enterMove = event => [event.shiftKey ? -1 : 1, 0];
+const hasShortcutModifier = event => event.ctrlKey || event.metaKey || event.altKey;
+
+// Remembers a grid cell or month button by its data, so the matching element can be
+// found again after a re-render replaces the grid. Null for anything else.
+function relocator(element) {
+    if (!(element instanceof Element) || !bsGrid.contains(element)) {
+        return null;
+    }
+
+    const cell = element.closest('td.edit');
+
+    if (cell) {
+        const { month, asset } = cell.dataset;
+
+        return () => cellFor(month, asset);
+    }
+
+    const button = element.closest('button[data-action]');
+
+    if (button) {
+        const { month } = button.closest('th').dataset;
+        const { action } = button.dataset;
+
+        return () => monthButtonFor(month, action);
+    }
+
+    return null;
+}
+
+// Opens an editor in the cell holding its current value, or `typed` when a key started the edit.
+function startEdit(cell, typed = null) {
     const { month, asset } = cell.dataset;
-    const current = balances[month]?.[asset];
+    const current = storedBalance(month, asset);
+    const initial = current === undefined ? '' : String(current);
     const input = document.createElement('input');
-    let finished = false;
 
     input.type = 'text';
     input.inputMode = 'decimal';
-    input.value = current ?? '';
-    input.setAttribute('aria-label', 'Balance');
-    cell.textContent = '';
+    input.value = typed ?? initial;
+    input.setAttribute('aria-label', cell.getAttribute('aria-label'));
+    // The editor covers the cell's text, which stays (hidden) so the column keeps its width.
+    cell.classList.add('editing');
+    // Out of the Tab order while editing, so Shift+Tab from the editor reaches the previous cell.
+    cell.tabIndex = -1;
     cell.appendChild(input);
-    input.focus();
 
-    const finish = commit => {
-        if (finished) {
-            return;
+    // Commits or cancels once; returns whether the edit was saved (or cancelled) cleanly.
+    // `focusAfter` finds the element to focus afterwards, if any; a rejected value keeps
+    // focus on its cell instead. An unchanged or cancelled edit just puts the cell back;
+    // a change saves and re-renders the grid.
+    const finish = (commit, focusAfter = null) => {
+        if (activeEdit?.input !== input) {
+            return true;
         }
 
-        finished = true;
+        activeEdit = null;
         bsMessage.textContent = '';
 
-        if (commit) {
-            const result = setBalance(balances, month, asset, input.value);
+        if (!commit || input.value === initial) {
+            cell.classList.remove('editing');
+            cell.tabIndex = 0;
+            input.remove();
+            focusAfter?.()?.focus();
 
-            if (!result.ok) {
-                bsMessage.textContent = result.error;
-                renderBalanceSheet();
+            return true;
+        }
 
-                return;
-            }
+        const result = setBalance(balances, month, asset, input.value);
 
-            saveAndRender();
-
-            return;
+        if (result.ok) {
+            saveBalanceSheet();
+        } else {
+            bsMessage.textContent = result.error;
         }
 
         renderBalanceSheet();
+        (result.ok ? focusAfter?.() : cellOrYear(month, asset))?.focus();
+
+        return result.ok;
     };
 
-    input.addEventListener('keydown', event => {
-        if (event.key === 'Enter') {
-            finish(true);
-        } else if (event.key === 'Escape') {
-            finish(false);
-        }
-    });
-    input.addEventListener('blur', () => finish(true));
+    activeEdit = { input, finish };
+    input.addEventListener('keydown', event => handleEditorKey(event, { month, asset, finish }));
+    // Tab to another cell or month button: a re-render replaces that element, so focus its successor.
+    input.addEventListener('blur', event => finish(true, relocator(event.relatedTarget)));
+    input.focus();
+    input.setSelectionRange(input.value.length, input.value.length);
+}
+
+// Escape cancels; Enter and Up/Down save and move to the cell above or below, staying put at the edge.
+// Left/Right move the caret. Keys that confirm an IME composition are left to the browser.
+function handleEditorKey(event, { month, asset, finish }) {
+    if (event.isComposing) {
+        return;
+    }
+
+    if (event.key === 'Escape') {
+        finish(false, () => cellOrYear(month, asset));
+    } else if (event.key === 'Enter' || event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+        event.preventDefault();
+        const rows = event.key === 'Enter' ? enterMove(event)[0] : ARROW_MOVES[event.key][0];
+        finish(true, () => neighbourOf(month, asset, rows, 0) ?? cellOrYear(month, asset));
+    }
+}
+
+function clearBalance(cell) {
+    const { month, asset } = cell.dataset;
+
+    if (storedBalance(month, asset) === undefined) {
+        return;
+    }
+
+    bsMessage.textContent = '';
+    setBalance(balances, month, asset, '');
+    saveAndRender();
+    // Clearing a past year's only balance removes its row.
+    cellOrYear(month, asset).focus();
+}
+
+// A press on a grid button or another cell would blur the input, and the re-render
+// on blur would replace the element before its click fires. Keeping focus in the
+// input lets the click arrive; handleGridClick then saves the edit first.
+function handleGridMouseDown(event) {
+    if (activeEdit && !activeEdit.input.contains(event.target) && event.target.closest('button[data-action], td.edit')) {
+        event.preventDefault();
+    }
 }
 
 function handleGridClick(event) {
     const button = event.target.closest('button[data-action]');
+    const cell = button ? null : event.target.closest('td.edit');
 
-    if (button) {
-        const key = button.closest('th').dataset.month;
+    // Nothing to do, or a click inside the cell being edited (the input or its padding).
+    if ((!button && !cell) || cell?.contains(activeEdit?.input)) {
+        return;
+    }
 
-        if (button.dataset.action === 'toggle-closed') {
-            toggleClosed(closedMonths, key);
-        } else {
-            copyPreviousMonth(balances, key, settings);
-        }
+    // Read the target before saving the open edit: saving re-renders the grid.
+    const { month, asset } = (button?.closest('th') ?? cell).dataset;
 
-        saveAndRender();
+    if (activeEdit && !activeEdit.finish(true)) {
+        return;
+    }
+
+    // Saving can remove the clicked row (its only balance in a past year was cleared)
+    // or switch the grid to another year (that was the year's last data).
+    if (cell) {
+        cellFor(month, asset)?.focus();
 
         return;
     }
 
+    if (!bsGrid.querySelector(`th[data-month="${month}"]`)) {
+        return;
+    }
+
+    if (button.dataset.action === 'toggle-closed') {
+        toggleClosed(closedMonths, month);
+    } else {
+        copyPreviousMonth(balances, month, settings);
+    }
+
+    saveAndRender();
+}
+
+function handleGridDoubleClick(event) {
     const cell = event.target.closest('td.edit');
 
-    if (cell && !cell.querySelector('input')) {
+    if (cell && !activeEdit) {
         startEdit(cell);
+    }
+}
+
+// Keys on the selected cell itself; keys typed into an open editor are handled by startEdit.
+function handleGridKeyDown(event) {
+    const cell = event.target;
+
+    if (!cell.matches('td.edit') || hasShortcutModifier(event)) {
+        return;
+    }
+
+    const move = event.key === 'Enter' ? enterMove(event) : ARROW_MOVES[event.key];
+
+    if (move) {
+        event.preventDefault();
+        neighbourOf(cell.dataset.month, cell.dataset.asset, ...move)?.focus();
+    } else if (event.key === 'F2') {
+        event.preventDefault();
+        startEdit(cell);
+    } else if (event.key === 'Delete' || event.key === 'Backspace') {
+        event.preventDefault();
+        clearBalance(cell);
+    } else if (event.key.length === 1 && event.key.trim() && !event.isComposing) {
+        // A typed character starts an edit that replaces the value, as in a spreadsheet.
+        // Spaces keep their browser meaning: an edit holding only a space would clear the balance.
+        event.preventDefault();
+        startEdit(cell, event.key);
     }
 }
 
@@ -254,5 +459,8 @@ export function initBalanceSheet() {
         selectedYear = Number(bsYearSelect.value);
         renderBalanceSheet();
     });
+    bsGrid.addEventListener('mousedown', handleGridMouseDown);
     bsGrid.addEventListener('click', handleGridClick);
+    bsGrid.addEventListener('dblclick', handleGridDoubleClick);
+    bsGrid.addEventListener('keydown', handleGridKeyDown);
 }

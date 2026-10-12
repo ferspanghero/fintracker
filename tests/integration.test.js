@@ -334,9 +334,13 @@ describe('Integration: app data always passes backup validation', () => {
         const { handleAddTransaction } = await import('../js/transactions.js');
         const dom = await import('../js/dom.js');
         replaceAll({ transactions: [], settings: emptySettings(), balances: {}, closedMonths: [] });
-        const td = parseCSV('12/02/2025,STARBUCKS COFFEE,12.50,,1000.00', 'td');
-        const ft = parseCSV('Date,Description,Category,Account,Amount,Type\n2025-02-03,Gift,presentes,TD,20,expense\n2025-02-04,Gift 2,Presentes,TD,5,expense', 'fintracker');
-        transactions.push(...td.transactions, ...ft.transactions);
+        const { processFiles } = await import('../js/import-export.js');
+        const files = {
+            'td.csv': '12/02/2025,STARBUCKS COFFEE,12.50,,1000.00',
+            'ft.csv': 'Date,Description,Category,Account,Amount,Type\n2025-02-03,Gift,presentes,TD,20,expense\n2025-02-04,Gift 2,Presentes,TD,5,expense'
+        };
+        dom.fileTypeSelect.value = 'auto';
+        await processFiles([{ name: 'td.csv' }, { name: 'ft.csv' }], async file => files[file.name]);
         populateTransactionCategorySelect();
         dom.transactionDateInput.value = '2025-02-05';
         dom.transactionDescriptionInput.value = 'Manual';

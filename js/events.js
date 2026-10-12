@@ -2,8 +2,9 @@ import {
     importBtn, dateRangeSelect, applyDateFilterBtn, categorySelect,
     textFilterInput, addTransactionBtn, exportCsvBtn, clearAllBtn,
     deleteSelectedBtn, selectAllCheckbox, transactionForm,
-    transactionCategorySelect, closeButtons, importResultModal, importResultOkBtn
+    transactionCategorySelect, importResultModal, importResultOkBtn
 } from './dom.js';
+import { initModals, closeModal } from './modal.js';
 import { currentFilter } from './state.js';
 import { handleImport, exportToCSV } from './import-export.js';
 import { handleDateRangeChange, applyCustomDateFilter, renderTransactions, updateSummary, handleSort } from './ui.js';
@@ -65,21 +66,8 @@ export function addEventListeners() {
     });
 
     // Import result dialog
-    importResultOkBtn.addEventListener('click', () => {
-        importResultModal.style.display = 'none';
-    });
+    importResultOkBtn.addEventListener('click', () => closeModal(importResultModal));
 
-    // Close buttons for modals
-    closeButtons.forEach(button => {
-        button.addEventListener('click', () => {
-            button.closest('.modal').style.display = 'none';
-        });
-    });
-
-    // Close modal when clicking outside
-    window.addEventListener('click', (event) => {
-        if (event.target.classList.contains('modal')) {
-            event.target.style.display = 'none';
-        }
-    });
+    // × buttons, backdrop clicks and Escape for every dialog
+    initModals();
 }

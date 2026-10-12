@@ -1,5 +1,6 @@
 import { parseMDY } from './date-helpers.js';
 import { parseCSVLine } from '../utils.js';
+import { INCOME, EXPENSE } from '../constants.js';
 
 export default {
     id: 'mastercard',
@@ -28,7 +29,7 @@ export default {
         if (!date) return null;
 
         // Sign carries direction: debits are negative, credits (payments, refunds) positive.
-        const type = amount > 0 ? 'income' : 'expense';
+        const type = amount > 0 ? INCOME : EXPENSE;
 
         return {
             date,

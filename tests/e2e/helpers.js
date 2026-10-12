@@ -60,14 +60,14 @@ export const stored = (page, key) => page.evaluate(k => JSON.parse(localStorage.
 
 export const monthHeader = (page, key) => page.locator(`#bs-grid th[data-month="${key}"]`);
 export const balanceCell = (page, key, assetId) => page.locator(`#bs-grid td[data-month="${key}"][data-asset="${assetId}"]`);
-export const gridRow = (page, label) => page.locator('#bs-grid tbody tr').filter({ has: page.locator('td:first-child', { hasText: label }) });
+export const gridRow = (page, label) => page.locator('#bs-grid tbody tr').filter({ has: page.locator('th[scope="row"]', { hasText: label }) });
 
-// Month cells are columns 2–13 of a grid row; extras follow.
-export const monthCell = (row, monthIndex) => row.locator('td').nth(monthIndex + 1);
-export const extraCell = (row, name) => row.locator('td').nth({ total: 13, average: 14, prev: 15, diff: 16 }[name]);
+// After the row header, a grid row has 12 month cells and then the extras.
+export const monthCell = (row, monthIndex) => row.locator('td').nth(monthIndex);
+export const extraCell = (row, name) => row.locator('td').nth({ total: 12, average: 13, prev: 14, diff: 15 }[name]);
 
 export async function editBalance(page, key, assetId, value) {
-    await balanceCell(page, key, assetId).click();
+    await balanceCell(page, key, assetId).dblclick();
     const input = balanceCell(page, key, assetId).locator('input');
     await input.fill(value);
     await input.press('Enter');

@@ -36,7 +36,7 @@ All UI text is English. Category names stay as they are in the data (Portuguese)
 ### Balance Sheet tab
 
 ```
-Year [2026 ▾]   Balances in each asset's own currency; totals in CAD. Click a balance to edit.
+Year [2026 ▾]   Balances in each asset's own currency; totals in CAD. Select a balance and type to edit.
 
 2026                 │ Jan      │ Feb      │ … │ Sep      │ Oct        │ Nov  │ Dec  ║ Total │ Average │ Prev. year avg │ Diff %
                      │ ✓ Closed │ ✓ Closed │   │ ✓ Closed │ Open       │ Open │ Open ║
@@ -58,7 +58,7 @@ Total expenses · Total saved · Investment returns · Saving rate · Expense ch
 ```
 
 - **Closed month:** green header marked "✓ Closed" with a Reopen button and a faint green column tint. **Open month:** grey header marked "Open"; its balances render dim italic, and a Close button appears once the month has balances. Closing only changes the visual state and whether the month counts in **Average**. Balances stay editable; import is never affected.
-- **Balance cell:** click to edit; the value is in the asset's currency, may be negative, and blank clears it. Commas are accepted only as thousands separators (`1,234.56`); anything else, such as `1234,56`, is refused rather than misread. Cells show whole units; hovering shows the exact value and its CAD equivalent.
+- **Balance cell:** edited like a spreadsheet — a click or the arrow keys select a cell; typing replaces its value, F2 or a double-click edits it; Enter saves and moves down (Shift+Enter up), Tab saves and moves right, Escape cancels, Delete or Backspace clears. Changes save as soon as the cell is left; Space and an invalid value never clear a balance, and a rejected value keeps the cell selected. The value is in the asset's currency, may be negative, and blank clears it. Commas are accepted only as thousands separators (`1,234.56`); anything else, such as `1234,56`, is refused rather than misread. Cells show whole units; hovering shows the exact value and its CAD equivalent.
 - **Copy prev.:** shown on the first month up to the current one that has no balances while the month before it has balances for at least one non-archived asset. It copies those balances.
 
 ### Settings tab
@@ -257,6 +257,13 @@ README.md  CLAUDE.md  project_files/overview.md              (modified)
 - **E23** — Fresh install: empty LocalStorage → category lists contain only Sem Categoria, no assets, rates empty; importing a TD CSV categorizes every row as Sem Categoria.
 - **E24** — Add New Category from the transaction form: name it, save → category appears in Settings and every dropdown.
 - **E25** — Missing rate on the Balance Sheet: USD asset with a balance, USD rate empty → net worth "—" with "Set rates in Settings".
+- **E26** — One click while editing: balance opened with a double-click and given a new value → click the month's Close button → value saved and month closed in that single click.
+- **E27** — Spreadsheet-style editing: click a balance → selected, no editor; type, Enter → value replaced, saved, and the cell below selected.
+- **E28** — Escape dismisses a restore: valid file chosen → dialog open with Cancel focused → Escape → dialog hidden, the chosen file forgotten, data unchanged.
+- **E29** — Re-importing an export: rows that are duplicates or match the ignore list don't add their categories to Settings; a kept row's new category is added.
+- **E30** — Grid navigation: arrows move the selection; type, Tab → saved and the next cell selected; type, Shift+Tab → saved and the previous cell selected.
+- **E31** — Clearing and in-place edits: Delete on a selected balance → cleared and saved; F2, type, Escape → unchanged; F2, type, Enter → appended to the current value and saved.
+- **E32** — Narrow screen: the grid scrolls sideways; arrowing left to January keeps the selected cell visible beside the sticky first column.
 
 ## Implementation Order
 

@@ -3,6 +3,8 @@
 // all data plus `today` so results are deterministic.
 
 import { monthKey } from './utils.js';
+import { INCOME, BASE_CURRENCY } from './constants.js';
+import { RATE_CURRENCIES } from './settings.js';
 
 const MONTH_KEY = /^\d{4}-(0[1-9]|1[0-2])$/;
 // Plain decimals with optional comma thousands separators: "1234.5", "-1,234,567.89", ".5".
@@ -31,7 +33,7 @@ function knownEntries(balances, key, assetsById) {
 }
 
 function rateTable(settings) {
-    return { CAD: 1, USD: settings.rates.USD, BRL: settings.rates.BRL };
+    return Object.fromEntries([[BASE_CURRENCY, 1], ...RATE_CURRENCIES.map(currency => [currency, settings.rates[currency]])]);
 }
 
 // Net worth of one month in CAD: null when the month has no entries or uses a currency without a rate.
@@ -72,7 +74,7 @@ function aggregateByMonth(transactions) {
 
         const month = months.get(key);
 
-        if (type === 'income') {
+        if (type === INCOME) {
             month.income += amount;
         } else {
             month.expenses += amount;

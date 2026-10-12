@@ -27,6 +27,8 @@ js/ignore-rules.js      # import ignore list: generic prefixes, personal-file lo
 js/settings.js          # pure rules for rates, the category list, assets
 js/balance-sheet.js     # pure Balance Sheet model (buildYear + balance helpers)
 js/backup.js            # pure backup format + validateBackup
+js/constants.js         # shared literals (transaction types, base currency) — use these, not string literals
+js/modal.js             # every dialog opens and closes through openModal / closeModal
 js/*-ui.js              # tab rendering/wiring for Balance Sheet and Settings
 js/parsers/             # one module per bank format + a registry
 tests/                  # mirrors js/; fixtures/ holds injectable module fixtures
@@ -44,7 +46,9 @@ tools/category-benchmark/
 - A fresh clone works with zero config: a missing personal-keywords file falls back to generic keywords only.
 - **State is mutated in place.** `state.js` exports are shared references; update them (or call `replaceAll`) — never reassign. `storage.js` is the only LocalStorage reader/writer; loading never writes.
 - **Keep pure modules pure.** `settings.js`, `balance-sheet.js`, `backup.js`, `rates.js`, `category-engine.js` take data (and `today`/`now`/`fetch`) as arguments; DOM work lives in the UI modules.
-- **Every stored transaction category must exist in `settings.categories` for its type** — otherwise the app's own Backup fails `validateBackup`. Any new write path must add the category through `settings.js` or fall back to `Sem Categoria`.
+- **Every stored transaction category must exist in `settings.categories` for its type** — otherwise the app's own Backup fails `validateBackup`. Any new write path must add the category through `settings.js` (`ensureCategory`) or fall back to `Sem Categoria`; imports do this only for rows they keep.
+- **Dialogs go through `js/modal.js`**, never `style.display`: it moves focus in and back, makes the page inert, keeps stacked dialogs in order, and fires `modal-close` so owners can drop pending state.
+- **The Balance Sheet grid re-renders on every save**, replacing the rows whose markup changed. Code that acts after a save must look elements up again by their data attributes (see `cellFor` / `relocator` in `balance-sheet-ui.js`), not hold references. Grid saves use `saveBalanceSheet()`, which skips transactions and settings — a grid action that changes those must call `saveData()`. Moving the selection and ending an edit unchanged must not save or re-render — that keeps navigation instant.
 - **Month keys use local time** (`monthKey`, `dateInputValue` in `utils.js`), never `toISOString()`. Exception: `getTransactionKey` keeps its UTC date — changing it breaks duplicate detection against stored data.
 - **Parsers receive a context:** `parseLine(line, { rates })`; a parser that can't work without it implements `validateContext` to refuse the whole file.
 - **Unit tests start with a sample category list** (`tests/fixtures/sample-categories.js`), and the DOM fixture is read from `index.html` — new element ids only need adding to `index.html` and `dom.js`.

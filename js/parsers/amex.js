@@ -1,5 +1,6 @@
 import { parseNamedMonth } from './date-helpers.js';
 import { parseCSVLine } from '../utils.js';
+import { INCOME, EXPENSE } from '../constants.js';
 
 export default {
     id: 'amex',
@@ -26,7 +27,7 @@ export default {
         const date = this.parseDate(dateStr);
         if (!date) return null;
 
-        const type = amount < 0 ? 'income' : 'expense';
+        const type = amount < 0 ? INCOME : EXPENSE;
 
         return {
             date,

@@ -4,6 +4,7 @@
 import { CURRENCIES, RATE_CURRENCIES, SETTINGS_VERSION } from './settings.js';
 import { UNCATEGORIZED } from './category-engine.js';
 import { isMonthKey } from './balance-sheet.js';
+import { EXPENSE, TRANSACTION_TYPES } from './constants.js';
 
 export const BACKUP_APP = 'fintracker';
 export const BACKUP_VERSION = 1;
@@ -35,7 +36,7 @@ export function backupFileName(now) {
 
 const isObject = value => typeof value === 'object' && value !== null && !Array.isArray(value);
 const isNonEmptyString = value => typeof value === 'string' && value.trim() !== '';
-const capitalized = type => (type === 'expense' ? 'Expense' : 'Income');
+const capitalized = type => (type === EXPENSE ? 'Expense' : 'Income');
 
 function checkRates(rates, errors) {
     if (!isObject(rates)) {
@@ -65,7 +66,7 @@ function checkRates(rates, errors) {
 function checkCategories(categories, errors) {
     let usable = true;
 
-    ['expense', 'income'].forEach(type => {
+    TRANSACTION_TYPES.forEach(type => {
         const list = categories?.[type];
         const label = `${capitalized(type)} categories`;
 
@@ -165,7 +166,7 @@ function checkTransactions(transactions, categories, errors) {
             errors.push(`${where}: amount must be a number.`);
         }
 
-        if (t?.type !== 'income' && t?.type !== 'expense') {
+        if (!TRANSACTION_TYPES.includes(t?.type)) {
             errors.push(`${where}: type must be income or expense.`);
         } else if (categories && !categories[t.type].includes(t.category)) {
             errors.push(`${where}: category "${t.category}" is not in the ${t.type} categories.`);

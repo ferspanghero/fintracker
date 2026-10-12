@@ -107,13 +107,13 @@
                     <table id="transactions-table">
                         <thead>
                             <tr>
-                                <th><input type="checkbox" id="select-all-checkbox"></th>
-                                <th data-sort="date" class="sortable">Date <span class="sort-icon"></span></th>
-                                <th data-sort="description" class="sortable">Description <span class="sort-icon"></span></th>
-                                <th data-sort="amount" class="sortable">Amount <span class="sort-icon"></span></th>
-                                <th data-sort="category" class="sortable">Category <span class="sort-icon"></span></th>
-                                <th data-sort="account" class="sortable">Account <span class="sort-icon"></span></th>
-                                <th data-sort="type" class="sortable">Type <span class="sort-icon"></span></th>
+                                <th><input type="checkbox" id="select-all-checkbox" aria-label="Select all transactions"></th>
+                                <th data-sort="date" class="sortable"><button type="button" class="sort-btn">Date <span class="sort-icon" aria-hidden="true"></span></button></th>
+                                <th data-sort="description" class="sortable"><button type="button" class="sort-btn">Description <span class="sort-icon" aria-hidden="true"></span></button></th>
+                                <th data-sort="amount" class="sortable"><button type="button" class="sort-btn">Amount <span class="sort-icon" aria-hidden="true"></span></button></th>
+                                <th data-sort="category" class="sortable"><button type="button" class="sort-btn">Category <span class="sort-icon" aria-hidden="true"></span></button></th>
+                                <th data-sort="account" class="sortable"><button type="button" class="sort-btn">Account <span class="sort-icon" aria-hidden="true"></span></button></th>
+                                <th data-sort="type" class="sortable"><button type="button" class="sort-btn">Type <span class="sort-icon" aria-hidden="true"></span></button></th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -131,12 +131,12 @@
                     <label for="bs-year">Year</label>
                     <select id="bs-year"></select>
                 </div>
-                <p class="hint">Balances in each asset's own currency; net worth and totals in CAD. Click a balance to edit; hover to see its exact and CAD value.</p>
+                <p id="bs-hint" class="hint">Balances in each asset's own currency; net worth and totals in CAD. Select a balance with a click or the arrow keys, then type to replace it, or press F2 or double-click to change it. Enter, Tab and the arrow keys save and move on, Esc cancels, Delete clears. Changes save as soon as you leave the cell; italics mark months still open. Hover to see a balance's exact and CAD value.</p>
             </div>
-            <p id="bs-rate-note" class="message"></p>
+            <p id="bs-rate-note" class="message" role="status"></p>
             <p id="bs-message" class="message" role="alert"></p>
             <div class="grid-wrap">
-                <table id="bs-grid" class="grid"></table>
+                <table id="bs-grid" class="grid" aria-describedby="bs-hint"></table>
             </div>
             <h2 id="bs-indicators-title">Indicators</h2>
             <div id="bs-indicators" class="kpis"></div>
@@ -163,10 +163,10 @@
 
                 <div class="box">
                     <h2>Categories</h2>
-                    <label>Expense</label>
-                    <div id="category-chips-expense" class="chips"></div>
-                    <label>Income</label>
-                    <div id="category-chips-income" class="chips"></div>
+                    <p id="category-chips-expense-label" class="field-label">Expense</p>
+                    <div id="category-chips-expense" class="chips" role="group" aria-labelledby="category-chips-expense-label"></div>
+                    <p id="category-chips-income-label" class="field-label">Income</p>
+                    <div id="category-chips-income" class="chips" role="group" aria-labelledby="category-chips-income-label"></div>
                     <div class="inline">
                         <select id="new-category-type" aria-label="Category type">
                             <option value="expense">Expense</option>
@@ -218,9 +218,9 @@
     
     <!-- Add Transaction Modal -->
     <div id="add-transaction-modal" class="modal">
-        <div class="modal-content">
-            <span class="close">&times;</span>
-            <h2>Add Transaction</h2>
+        <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="add-transaction-title">
+            <button type="button" class="close" aria-label="Close">&times;</button>
+            <h2 id="add-transaction-title">Add Transaction</h2>
             <form id="transaction-form">
                 <div class="form-group">
                     <label for="transaction-date">Date:</label>
@@ -271,8 +271,8 @@
     
     <!-- Import Result Modal -->
     <div id="import-result-modal" class="modal">
-        <div class="modal-content" role="dialog" aria-labelledby="import-result-title">
-            <span class="close">&times;</span>
+        <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="import-result-title">
+            <button type="button" class="close" aria-label="Close">&times;</button>
             <h2 id="import-result-title">Import complete</h2>
             <div id="import-result-body"></div>
             <button type="button" id="import-result-ok">OK</button>
@@ -281,13 +281,13 @@
 
     <!-- Restore Confirm Modal -->
     <div id="restore-modal" class="modal">
-        <div class="modal-content" role="dialog" aria-labelledby="restore-title">
-            <span class="close">&times;</span>
+        <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="restore-title" aria-describedby="restore-summary">
+            <button type="button" class="close" aria-label="Close">&times;</button>
             <h2 id="restore-title">Restore backup</h2>
             <p id="restore-summary"></p>
             <div class="inline">
                 <button type="button" id="restore-confirm-btn" class="red">Replace All Data</button>
-                <button type="button" id="restore-cancel-btn" class="plain">Cancel</button>
+                <button type="button" id="restore-cancel-btn" class="plain" data-autofocus>Cancel</button>
             </div>
         </div>
     </div>

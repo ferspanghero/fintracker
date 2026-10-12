@@ -23,16 +23,10 @@ export function loadData() {
     });
 }
 
-/**
- * Saves all app data to LocalStorage; alerts instead of throwing when storage is full or disabled.
- * @returns {boolean} whether everything was saved
- */
-export function saveData() {
+// Writes each [key, value] pair as JSON; alerts instead of throwing when storage is full or disabled.
+function write(entries) {
     try {
-        localStorage.setItem('transactions', JSON.stringify(transactions));
-        localStorage.setItem('settings', JSON.stringify(settings));
-        localStorage.setItem('balances', JSON.stringify(balances));
-        localStorage.setItem('closedMonths', JSON.stringify(closedMonths));
+        entries.forEach(([key, value]) => localStorage.setItem(key, JSON.stringify(value)));
 
         return true;
     } catch (e) {
@@ -41,6 +35,23 @@ export function saveData() {
 
         return false;
     }
+}
+
+/**
+ * Saves all app data to LocalStorage; alerts instead of throwing when storage is full or disabled.
+ * @returns {boolean} whether everything was saved
+ */
+export function saveData() {
+    return write([['transactions', transactions], ['settings', settings], ['balances', balances], ['closedMonths', closedMonths]]);
+}
+
+/**
+ * Saves only balances and closed months, the data the Balance Sheet grid changes,
+ * so an edit there doesn't rewrite every transaction.
+ * @returns {boolean} whether both were saved
+ */
+export function saveBalanceSheet() {
+    return write([['balances', balances], ['closedMonths', closedMonths]]);
 }
 
 /** Removes keys older versions wrote that the app no longer reads (called by Restore). */

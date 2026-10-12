@@ -8,6 +8,11 @@ import td from './td.js';
 // Order matters: most specific first, td last (fallback — always returns true from detect)
 const parsers = [fintracker, amex, mastercard, simplii, bradesco, td];
 
+/** File-type value that asks the registry to pick the parser from the file's first line. */
+export const AUTO_DETECT = 'auto';
+/** Parser used when no other parser recognizes a file. */
+export const FALLBACK_PARSER_ID = td.id;
+
 export function getParserById(id) {
     return parsers.find(p => p.id === id) || null;
 }

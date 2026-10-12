@@ -1,6 +1,4 @@
 import { describe, it, expect } from 'vitest';
-import { emptySettings } from '../../js/settings.js';
-import { UNCATEGORIZED } from '../../js/category-engine.js';
 import fintrackerParser from '../../js/parsers/fintracker.js';
 
 describe('fintracker parser', () => {
@@ -9,10 +7,6 @@ describe('fintracker parser', () => {
             expect(fintrackerParser.id).toBe('fintracker');
             expect(fintrackerParser.account).toBeUndefined();
             expect(fintrackerParser.hasHeader).toBe(true);
-        });
-
-        it('has afterParse hook', () => {
-            expect(typeof fintrackerParser.afterParse).toBe('function');
         });
     });
 
@@ -70,58 +64,5 @@ describe('fintracker parser', () => {
     it('throws on a type other than income or expense', () => {
         // Act, Assert
         expect(() => fintrackerParser.parseLine('2025-04-12,Test,Casa,MyBank,50,transfer')).toThrow('Invalid type "transfer"');
-    });
-
-    describe('afterParse', () => {
-        const settingsWith = (expense) => ({ ...emptySettings(), categories: { expense: [...expense, UNCATEGORIZED], income: [UNCATEGORIZED] } });
-
-        it('adds a new category to the Settings list', () => {
-            // Arrange
-            const settings = settingsWith(['Casa']);
-            const txn = { category: 'CustomCat', type: 'expense' };
-
-            // Act
-            fintrackerParser.afterParse(txn, { settings });
-
-            // Assert
-            expect(settings.categories.expense).toEqual(['Casa', 'CustomCat', UNCATEGORIZED]);
-        });
-
-        it('does not duplicate an existing category', () => {
-            // Arrange
-            const settings = settingsWith(['Casa']);
-
-            // Act
-            fintrackerParser.afterParse({ category: 'Casa', type: 'expense' }, { settings });
-
-            // Assert
-            expect(settings.categories.expense).toEqual(['Casa', UNCATEGORIZED]);
-        });
-
-        it('uses the stored spelling for a case-insensitive match', () => {
-            // Arrange
-            const settings = settingsWith(['Casa']);
-            const txn = { category: 'CASA', type: 'expense' };
-
-            // Act
-            fintrackerParser.afterParse(txn, { settings });
-
-            // Assert
-            expect(txn.category).toBe('Casa');
-            expect(settings.categories.expense).toEqual(['Casa', UNCATEGORIZED]);
-        });
-
-        it('files a blank category under Sem Categoria', () => {
-            // Arrange
-            const settings = settingsWith(['Casa']);
-            const txn = { category: '   ', type: 'expense' };
-
-            // Act
-            fintrackerParser.afterParse(txn, { settings });
-
-            // Assert
-            expect(txn.category).toBe(UNCATEGORIZED);
-            expect(settings.categories.expense).toEqual(['Casa', UNCATEGORIZED]);
-        });
     });
 });

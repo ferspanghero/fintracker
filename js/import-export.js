@@ -1,11 +1,13 @@
 import { transactions, currentFilter, settings } from './state.js';
+import { ensureCategory } from './settings.js';
 import { fileInput, fileTypeSelect, importBtn, importResultModal, importResultTitle, importResultBody } from './dom.js';
-import { escapeHTML, monthKey } from './utils.js';
+import { escapeHTML, monthKey, readFileText } from './utils.js';
 import { categorizeTransaction, populateCategoryDropdowns, PERSONAL_KEYWORDS_PATH } from './categories.js';
 import { getFilteredTransactions, saveAndRefresh } from './transactions.js';
 import { sortTransactions } from './ui.js';
-import { getParserById, detectParser } from './parsers/index.js';
+import { getParserById, detectParser, AUTO_DETECT, FALLBACK_PARSER_ID } from './parsers/index.js';
 import { loadIgnorePrefixes, isIgnored } from './ignore-rules.js';
+import { openModal } from './modal.js';
 
 // Top-level await, like categoryKeywords in categories.js — main.js already
 // handles module evaluation finishing after DOMContentLoaded.
@@ -16,7 +18,10 @@ export function getTransactionKey(transaction) {
     return `${dateStr}-${transaction.description}-${transaction.amount}-${transaction.type}-${transaction.account}`;
 }
 
-// Handle import button click
+/**
+ * Import button: reads the selected files and imports them.
+ * @returns {Promise<void>|undefined} settles once the result dialog is shown; undefined when no file is selected
+ */
 export function handleImport() {
     const files = fileInput.files;
 
@@ -25,12 +30,10 @@ export function handleImport() {
         return;
     }
 
-    // Disable import button during import
     importBtn.disabled = true;
     importBtn.textContent = 'Importing...';
 
-    // Process files sequentially
-    processFiles(files, 0);
+    return processFiles([...files]);
 }
 
 const emptyTotals = () => ({ imported: 0, duplicates: 0, ignored: 0, errors: 0, added: [], messages: [] });
@@ -85,92 +88,85 @@ function showImportResult(result) {
         <p class="hint">${escapeHTML(text.counts)}</p>
         ${text.messages.length ? `<ul class="message">${listItems(text.messages)}</ul>` : ''}
     `;
-    importResultModal.style.display = 'block';
+    // The Import button was disabled (and lost focus) while reading, so return focus to it explicitly.
+    openModal(importResultModal, { returnFocus: importBtn });
+}
+
+// Adds one file's rows to `transactions`, updating the running totals.
+function importContents(contents, file, totals) {
+    const parseResult = parseCSV(contents, fileTypeSelect.value);
+    totals.errors += parseResult.errorCount;
+
+    if (parseResult.transactions.length === 0) {
+        console.warn(`No transactions imported from file: ${file.name}`);
+    }
+
+    // Built once per file, so a file may still contain repeated rows that are all
+    // added; only rows already stored by an earlier import count as duplicates.
+    const transactionKeys = new Set(transactions.map(getTransactionKey));
+
+    parseResult.transactions.forEach(transaction => {
+        if (isIgnored(transaction.description, ignorePrefixes)) {
+            totals.ignored++;
+
+            return;
+        }
+
+        if (transactionKeys.has(getTransactionKey(transaction))) {
+            totals.duplicates++;
+
+            return;
+        }
+
+        // Only rows that are kept may bring a category into Settings (e.g. from a FinTracker export).
+        transaction.category = ensureCategory(settings, transaction.type, transaction.category);
+        transactions.push(transaction);
+        totals.added.push(transaction);
+        totals.imported++;
+    });
 }
 
 /**
  * Reads and imports files one at a time, then shows the result dialog.
- * @param {FileList|{length: number}} files
- * @param {number} index file to process next
- * @param {object} totals running counts carried between files
+ * @param {File[]} files
+ * @param {(file: File) => Promise<string>} readText file reader, injectable for tests
+ * @returns {Promise<void>}
  */
-export function processFiles(files, index, totals = emptyTotals()) {
-    const next = () => processFiles(files, index + 1, totals);
+export async function processFiles(files, readText = readFileText) {
+    const totals = emptyTotals();
 
-    // If all files have been processed
-    if (index >= files.length) {
-        // Re-enable import button
-        importBtn.disabled = false;
-        importBtn.textContent = 'Import';
-
-        if (totals.imported > 0) {
-            // A FinTracker export can bring new categories into Settings.
-            populateCategoryDropdowns();
-            saveAndRefresh();
-        }
-
-        showImportResult({ ...totals, fileCount: files.length, months: summarizeByMonth(totals.added) });
-
-        return;
-    }
-
-    // Get current file
-    const file = files[index];
-    const reader = new FileReader();
-
-    reader.onload = function(e) {
-        const contents = e.target.result;
-        const fileType = fileTypeSelect.value;
+    for (const [index, file] of files.entries()) {
+        importBtn.textContent = `Importing (${index + 1}/${files.length})...`;
+        let contents;
 
         try {
-            // Update import button text to show progress
-            importBtn.textContent = `Importing (${index + 1}/${files.length})...`;
+            contents = await readText(file);
+        } catch (error) {
+            console.error(`Error reading file ${file.name}:`, error);
+            totals.errors++;
+            totals.messages.push(`${file.name}: couldn't be read. Check the file encoding and format.`);
+            continue;
+        }
 
-            const parseResult = parseCSV(contents, fileType);
-            const importedTransactions = parseResult.transactions;
-            totals.errors += parseResult.errorCount;
-
-            if (importedTransactions.length === 0) {
-                console.warn(`No transactions imported from file: ${file.name}`);
-            }
-
-            const transactionKeys = new Set(transactions.map(getTransactionKey));
-
-            importedTransactions.forEach(importedTransaction => {
-                if (isIgnored(importedTransaction.description, ignorePrefixes)) {
-                    totals.ignored++;
-                    return;
-                }
-
-                // Check if this transaction has been seen before. Note we do not update transactionKeys because
-                // a file may contain valid duplicates that should all be added. This should only prevent duplicates
-                // in different files.
-                if (!transactionKeys.has(getTransactionKey(importedTransaction))) {
-                    transactions.push(importedTransaction);
-                    totals.added.push(importedTransaction);
-                    totals.imported++;
-                } else {
-                    totals.duplicates++;
-                }
-            });
+        try {
+            importContents(contents, file, totals);
         } catch (error) {
             console.error(`Error importing file ${file.name}: ${error.message}`);
             totals.errors++;
             totals.messages.push(`${file.name}: ${error.message}`);
         }
+    }
 
-        next();
-    };
+    importBtn.disabled = false;
+    importBtn.textContent = 'Import';
 
-    reader.onerror = function(event) {
-        console.error(`Error reading file ${file.name}:`, event.target.error);
-        totals.errors++;
-        totals.messages.push(`${file.name}: couldn't be read. Check the file encoding and format.`);
-        next();
-    };
+    if (totals.imported > 0) {
+        // Imported rows can bring new categories into Settings.
+        populateCategoryDropdowns();
+        saveAndRefresh();
+    }
 
-    // Try reading with UTF-8 encoding first, then fallback to Latin-1
-    reader.readAsText(file, 'UTF-8');
+    showImportResult({ ...totals, fileCount: files.length, months: summarizeByMonth(totals.added) });
 }
 
 /**
@@ -188,7 +184,7 @@ export function parseCSV(csvContent, fileType, ctx = { rates: settings.rates }) 
 
     // Resolve parser from registry
     let parser;
-    if (fileType === 'auto') {
+    if (fileType === AUTO_DETECT) {
         parser = detectParser(lines[0]);
     } else {
         parser = getParserById(fileType);
@@ -219,11 +215,6 @@ export function parseCSV(csvContent, fileType, ctx = { rates: settings.rates }) 
                 transaction.category = categorizeTransaction(transaction.description, transaction.type);
             }
 
-            // Parser-specific post-processing (e.g., FinTracker's category side-effect)
-            if (parser.afterParse) {
-                parser.afterParse(transaction, { settings });
-            }
-
             importedTransactions.push(transaction);
         } catch (error) {
             console.error(`Error parsing line ${i + 1}: ${error.message}`);
@@ -237,7 +228,7 @@ export function parseCSV(csvContent, fileType, ctx = { rates: settings.rates }) 
 // Backward-compatible wrapper delegating to the parser registry
 export function detectFileType(headerRow) {
     const parser = detectParser(headerRow);
-    return parser ? parser.id : 'td';
+    return parser ? parser.id : FALLBACK_PARSER_ID;
 }
 
 // Export to CSV

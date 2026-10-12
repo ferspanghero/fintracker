@@ -14,9 +14,11 @@ import {
     setAssetArchived, setRate, applyRates, CURRENCIES
 } from './settings.js';
 import { fetchLatestRates } from './rates.js';
+import { openModal, closeModal } from './modal.js';
 import { buildBackup, validateBackup, describeBackup, backupFileName } from './backup.js';
-import { escapeHTML } from './utils.js';
+import { escapeHTML, readFileText } from './utils.js';
 import { UNCATEGORIZED } from './category-engine.js';
+import { INCOME, EXPENSE } from './constants.js';
 
 const MAX_LISTED_ERRORS = 10;
 
@@ -55,20 +57,24 @@ function renderChips(container, type) {
 }
 
 function renderAssets() {
-    assetsBody.innerHTML = settings.assets.map(asset => `
+    assetsBody.innerHTML = settings.assets.map(asset => {
+        const name = escapeHTML(asset.name);
+
+        return `
         <tr data-id="${escapeHTML(asset.id)}">
-            <td><input type="text" value="${escapeHTML(asset.name)}" aria-label="Asset name"></td>
-            <td><select aria-label="Currency">${CURRENCIES.map(c =>
+            <td><input type="text" value="${name}" aria-label="Name of ${name}"></td>
+            <td><select aria-label="Currency of ${name}">${CURRENCIES.map(c =>
                 `<option value="${c}"${c === asset.currency ? ' selected' : ''}>${c}</option>`).join('')}</select></td>
-            <td class="ctr"><input type="checkbox" aria-label="Archived"${asset.archived ? ' checked' : ''}></td>
-        </tr>`).join('');
+            <td class="ctr"><input type="checkbox" aria-label="Archive ${name}"${asset.archived ? ' checked' : ''}></td>
+        </tr>`;
+    }).join('');
 }
 
 /** Renders every Settings section from current state. */
 export function renderSettings() {
     renderRates();
-    renderChips(categoryChipsExpense, 'expense');
-    renderChips(categoryChipsIncome, 'income');
+    renderChips(categoryChipsExpense, EXPENSE);
+    renderChips(categoryChipsIncome, INCOME);
     renderAssets();
 }
 
@@ -181,19 +187,6 @@ function downloadBackup() {
     URL.revokeObjectURL(url);
 }
 
-/**
- * Reads a File or Blob as text (FileReader works in every supported browser and in jsdom).
- * @returns {Promise<string>}
- */
-export function readFileText(file) {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = () => reject(reader.error);
-        reader.readAsText(file, 'UTF-8');
-    });
-}
-
 function showBackupErrors(errors) {
     const listed = errors.slice(0, MAX_LISTED_ERRORS);
 
@@ -234,12 +227,7 @@ async function handleRestoreFile() {
 
     pendingRestore = result.data;
     restoreSummary.textContent = describeBackup(result.data);
-    restoreModal.style.display = 'block';
-}
-
-function closeRestoreModal() {
-    pendingRestore = null;
-    restoreModal.style.display = 'none';
+    openModal(restoreModal);
 }
 
 function confirmRestore() {
@@ -248,7 +236,7 @@ function confirmRestore() {
     }
 
     replaceAll(pendingRestore);
-    closeRestoreModal();
+    closeModal(restoreModal);
     const saved = saveData();
     renderSettings();
     notifyDataChanged();
@@ -291,5 +279,9 @@ export function initSettings({ onDataChanged }) {
     restoreBtn.addEventListener('click', () => restoreFileInput.click());
     restoreFileInput.addEventListener('change', handleRestoreFile);
     restoreConfirmBtn.addEventListener('click', confirmRestore);
-    restoreCancelBtn.addEventListener('click', closeRestoreModal);
+    restoreCancelBtn.addEventListener('click', () => closeModal(restoreModal));
+    // However the dialog closes (Cancel, ×, backdrop, Escape, or after a restore), the chosen file is dropped.
+    restoreModal.addEventListener('modal-close', () => {
+        pendingRestore = null;
+    });
 }

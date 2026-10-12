@@ -1,5 +1,6 @@
 import { parseMDY } from './date-helpers.js';
 import { parseCSVLine } from '../utils.js';
+import { INCOME, EXPENSE } from '../constants.js';
 
 export default {
     id: 'simplii',
@@ -30,10 +31,10 @@ export default {
         let amount, type;
         if (fundsIn && parseFloat(fundsIn) > 0) {
             amount = parseFloat(fundsIn);
-            type = 'income';
+            type = INCOME;
         } else {
             amount = parseFloat(fundsOut);
-            type = 'expense';
+            type = EXPENSE;
         }
 
         return {

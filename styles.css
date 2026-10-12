@@ -339,6 +339,21 @@ tbody tr:hover {
     position: relative;
 }
 
+button.sort-btn, button.sort-btn:hover {
+    width: auto;
+    background: none;
+    border: none;
+    padding: 0;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+}
+
+.field-label {
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
 .sort-icon {
     font-size: 0.8em;
     margin-left: 5px;
@@ -449,15 +464,20 @@ tbody tr:hover {
     margin-bottom: 14px;
 }
 
-.close {
+button.close, button.close:hover {
+    width: auto;
     color: var(--muted);
     float: right;
     font-size: 28px;
     font-weight: bold;
+    line-height: 1;
     cursor: pointer;
+    background: none;
+    border: none;
+    padding: 0 4px;
 }
 
-.close:hover {
+button.close:hover {
     color: var(--fg);
 }
 
@@ -545,6 +565,10 @@ table.grid {
     vertical-align: top;
 }
 
+.grid tbody th {
+    font-weight: normal;
+}
+
 .grid th.m.closed {
     background: var(--closed-head);
     color: #fff;
@@ -599,7 +623,7 @@ table.grid {
     background: var(--closed-tint);
 }
 
-.grid tr.section td {
+.grid tr.section :is(td, th) {
     background: var(--section);
     color: var(--muted);
     font-weight: bold;
@@ -609,12 +633,12 @@ table.grid {
     text-align: left;
 }
 
-.grid tr.strong td {
+.grid tr.strong :is(td, th) {
     font-weight: bold;
     border-top: 2px solid var(--border);
 }
 
-.grid tr.networth td {
+.grid tr.networth :is(td, th) {
     background: var(--th);
     font-weight: bold;
     font-size: 0.88rem;
@@ -638,14 +662,37 @@ table.grid {
     outline-offset: -3px;
 }
 
+.grid td.edit:focus,
+.grid td.edit:focus-within {
+    outline: 2px solid var(--blue);
+    outline-offset: -2px;
+}
+
+/* The editor lies over its cell's hidden text, so the column keeps its width
+   and a selected cell and one being edited look alike. */
+.grid td.edit.editing {
+    position: relative;
+    color: transparent;
+}
+
 .grid td.edit input {
-    width: 90px;
+    position: absolute;
+    inset: 0;
+    box-sizing: border-box;
+    width: 100%;
+    height: 100%;
     margin: 0;
-    padding: 2px 4px;
+    padding: 0 8px;
+    border: none;
+    border-radius: 0;
+    outline: none;
+    background: transparent;
+    color: var(--fg);
+    font: inherit;
     text-align: right;
 }
 
-.grid tr.warn td {
+.grid tr.warn :is(td, th) {
     background: var(--warn-bg);
     color: var(--warn-ink);
 }

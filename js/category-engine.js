@@ -7,7 +7,11 @@
 // information live in a gitignored file whose path the caller passes in.
 // A committed `personal-keywords.example.js` is provided as a template.
 
+import { INCOME, EXPENSE, TRANSACTION_TYPES } from './constants.js';
+
 export const UNCATEGORIZED = 'Sem Categoria';
+/** Where an income row that only matches expense keywords goes: a refund of a purchase. */
+export const REFUND_CATEGORY = 'Reembolso';
 
 // Generic keywords — concepts and well-known global brands only.
 const genericKeywords = {
@@ -172,7 +176,7 @@ export async function loadCategoryKeywords(personalKeywordsPath) {
  */
 export function restrictKeywords(categoryKeywords, allowed) {
     const restricted = {};
-    for (const type of ['expense', 'income']) {
+    for (const type of TRANSACTION_TYPES) {
         const names = allowed[type] ?? [];
         restricted[type] = Object.fromEntries(
             Object.entries(categoryKeywords[type] ?? {}).filter(([category]) => names.includes(category))
@@ -196,11 +200,11 @@ export function categorizeTransaction(description, type, categoryKeywords) {
     }
 
     // Income fallback: if description matches an expense keyword, it's a refund
-    if (type === 'income') {
-        for (const keywords of Object.values(categoryKeywords['expense'])) {
+    if (type === INCOME) {
+        for (const keywords of Object.values(categoryKeywords[EXPENSE])) {
             for (const keyword of keywords) {
                 if (description.includes(keyword)) {
-                    return 'Reembolso';
+                    return REFUND_CATEGORY;
                 }
             }
         }

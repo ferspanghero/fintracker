@@ -1,5 +1,6 @@
 import { parseDMY } from './date-helpers.js';
 import { BRLtoCAD } from '../utils.js';
+import { INCOME, EXPENSE } from '../constants.js';
 
 export default {
     id: 'bradesco',
@@ -56,10 +57,10 @@ export default {
         let amount, type;
         if (creditAmount > 0) {
             amount = BRLtoCAD(creditAmount, rates.BRL);
-            type = 'income';
+            type = INCOME;
         } else if (debitAmount > 0) {
             amount = BRLtoCAD(debitAmount, rates.BRL);
-            type = 'expense';
+            type = EXPENSE;
         } else {
             return null;
         }

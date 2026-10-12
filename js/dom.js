@@ -27,7 +27,6 @@ export let transactionCategorySelect;
 export let transactionAccountSelect;
 export let newCategoryGroup;
 export let newCategoryNameInput;
-export let closeButtons;
 
 // Import result modal
 export let importResultModal;
@@ -101,7 +100,6 @@ export function refreshDom() {
     transactionAccountSelect = document.getElementById('transaction-account');
     newCategoryGroup = document.getElementById('new-category-group');
     newCategoryNameInput = document.getElementById('new-category-name');
-    closeButtons = document.querySelectorAll('.close');
     importResultModal = document.getElementById('import-result-modal');
     importResultTitle = document.getElementById('import-result-title');
     importResultBody = document.getElementById('import-result-body');

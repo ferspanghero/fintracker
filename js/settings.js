@@ -4,11 +4,11 @@
 // `error` is a user-facing message.
 
 import { UNCATEGORIZED } from './category-engine.js';
+import { BASE_CURRENCY, TRANSACTION_TYPES } from './constants.js';
 
 export const SETTINGS_VERSION = 1;
-export const CURRENCIES = ['CAD', 'USD', 'BRL'];
 export const RATE_CURRENCIES = ['USD', 'BRL'];
-export const CATEGORY_TYPES = ['expense', 'income'];
+export const CURRENCIES = [BASE_CURRENCY, ...RATE_CURRENCIES];
 
 /**
  * Settings for a fresh install: only "Sem Categoria" in each type, no assets, no rates.
@@ -54,7 +54,7 @@ export function countCategoryUsage(transactions, type, name) {
  * @returns {{ok: true, name: string} | {ok: false, error: string}}
  */
 export function addCategory(settings, type, name) {
-    if (!CATEGORY_TYPES.includes(type)) {
+    if (!TRANSACTION_TYPES.includes(type)) {
         return fail(`Unknown category type "${type}".`);
     }
 
@@ -75,6 +75,24 @@ export function addCategory(settings, type, name) {
     list.splice(uncategorizedIndex === -1 ? list.length : uncategorizedIndex, 0, trimmed);
 
     return { ok: true, name: trimmed };
+}
+
+/**
+ * Makes sure a transaction's category is in the list, for write paths that store
+ * categories from outside the app (e.g. a FinTracker import).
+ * @returns {string} the stored spelling of `name`, newly added when unknown;
+ *          "Sem Categoria" when `name` is blank
+ */
+export function ensureCategory(settings, type, name) {
+    const existing = findCategory(settings, type, name);
+
+    if (existing) {
+        return existing;
+    }
+
+    const added = addCategory(settings, type, name);
+
+    return added.ok ? added.name : UNCATEGORIZED;
 }
 
 /**

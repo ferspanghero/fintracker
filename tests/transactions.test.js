@@ -240,6 +240,7 @@ describe('handleAddTransaction', () => {
     });
 
     it('closes modal after adding', () => {
+        openAddTransactionModal();
         fillForm({});
         handleAddTransaction(new Event('submit', { cancelable: true }));
         expect(addTransactionModal.style.display).toBe('none');

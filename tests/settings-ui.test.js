@@ -1,9 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { renderSettings, initSettings, readFileText } from '../js/settings-ui.js';
+import { renderSettings, initSettings } from '../js/settings-ui.js';
+import { readFileText } from '../js/utils.js';
+import { initModals } from '../js/modal.js';
 import { transactions, settings, balances, closedMonths } from '../js/state.js';
 import {
     rateUsdInput, rateBrlInput, refreshRatesBtn, rateNote, rateMessage,
-    categoryChipsExpense, newCategoryTypeSelect, settingsNewCategoryInput, addCategoryBtn, categoryMessage,
+    categoryChipsExpense, categoryChipsIncome, newCategoryTypeSelect, settingsNewCategoryInput, addCategoryBtn, categoryMessage,
     assetsBody, newAssetNameInput, newAssetCurrencySelect, addAssetBtn, assetMessage,
     downloadBackupBtn, restoreFileInput, backupMessage, restoreModal, restoreSummary, restoreConfirmBtn, restoreCancelBtn
 } from '../js/dom.js';
@@ -178,6 +180,32 @@ describe('settings UI', () => {
 
     describe('assets', () => {
         const row = i => assetsBody.querySelectorAll('tr')[i];
+
+        it('labels each asset control with the asset name', () => {
+            // Arrange
+            settings.assets.push({ id: 'a', name: 'Savings', currency: 'CAD', archived: false });
+
+            // Act
+            renderSettings();
+
+            // Assert
+            expect(row(0).querySelector('input[type="text"]').getAttribute('aria-label')).toBe('Name of Savings');
+            expect(row(0).querySelector('select').getAttribute('aria-label')).toBe('Currency of Savings');
+            expect(row(0).querySelector('input[type="checkbox"]').getAttribute('aria-label')).toBe('Archive Savings');
+        });
+
+        it('names the category chip groups', () => {
+            // Arrange
+            const nameOf = group => document.getElementById(group.getAttribute('aria-labelledby')).textContent;
+
+            // Act
+            renderSettings();
+
+            // Assert
+            expect(categoryChipsExpense.getAttribute('role')).toBe('group');
+            expect(nameOf(categoryChipsExpense)).toBe('Expense');
+            expect(nameOf(categoryChipsIncome)).toBe('Income');
+        });
 
         it('adds an asset', () => {
             // Arrange
@@ -358,6 +386,25 @@ describe('settings UI', () => {
             // Assert
             expect(transactions.map(t => t.description)).toEqual(['old']);
             expect(restoreModal.style.display).toBe('none');
+        });
+
+        it.each([
+            ['the × button', () => restoreModal.querySelector('.close').click()],
+            ['the backdrop', () => restoreModal.click()],
+            ['Escape', () => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))]
+        ])('forgets the chosen file when the dialog is closed with %s', async (_, close) => {
+            // Arrange
+            initModals();
+            transactions.push({ date: new Date(), description: 'old', amount: 1, type: 'expense', category: 'Casa', account: 'A' });
+            await restoreWith(validBackupText());
+
+            // Act
+            close();
+            restoreConfirmBtn.click();
+
+            // Assert
+            expect(restoreModal.style.display).toBe('none');
+            expect(transactions.map(t => t.description)).toEqual(['old']);
         });
 
         it('lists what is wrong with an invalid file and changes nothing', async () => {

@@ -1,7 +1,6 @@
 import { parseYMD } from './date-helpers.js';
 import { parseCSVLine } from '../utils.js';
-import { findCategory, addCategory } from '../settings.js';
-import { UNCATEGORIZED } from '../category-engine.js';
+import { TRANSACTION_TYPES } from '../constants.js';
 
 export default {
     id: 'fintracker',
@@ -27,7 +26,7 @@ export default {
         const amount = parseFloat(parts[4]);
         const type = parts[5].toLowerCase();
 
-        if (type !== 'income' && type !== 'expense') {
+        if (!TRANSACTION_TYPES.includes(type)) {
             throw new Error(`Invalid type "${parts[5]}"`);
         }
 
@@ -42,21 +41,5 @@ export default {
             category,
             account
         };
-    },
-
-    // Keeps imported categories inside the Settings list: a known name in another
-    // case takes the stored spelling, an unknown one is added, a blank one is
-    // filed under Sem Categoria.
-    afterParse(transaction, { settings }) {
-        const { category, type } = transaction;
-        const existing = findCategory(settings, type, category);
-
-        if (existing) {
-            transaction.category = existing;
-        } else if (category.trim()) {
-            transaction.category = addCategory(settings, type, category).name;
-        } else {
-            transaction.category = UNCATEGORIZED;
-        }
     }
 };

@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { dateStrInputToLocalDate, parseCSVLine, BRLtoCAD, escapeHTML, monthKey, dateInputValue } from '../js/utils.js';
+import { describe, it, expect, vi, afterEach } from 'vitest';
+import { dateStrInputToLocalDate, parseCSVLine, BRLtoCAD, escapeHTML, monthKey, dateInputValue, readFileText } from '../js/utils.js';
 
 describe('dateStrInputToLocalDate', () => {
     it('parses YYYY-MM-DD to local date', () => {
@@ -142,5 +142,36 @@ describe('escapeHTML', () => {
 
     it('returns safe string unchanged', () => {
         expect(escapeHTML('hello world')).toBe('hello world');
+    });
+});
+
+describe('readFileText', () => {
+    afterEach(() => {
+        vi.unstubAllGlobals();
+    });
+
+    it('resolves with the file contents as UTF-8 text', async () => {
+        // Arrange
+        const file = new File(['Açaí,12.50'], 'a.csv');
+
+        // Act
+        const text = await readFileText(file);
+
+        // Assert
+        expect(text).toBe('Açaí,12.50');
+    });
+
+    it('rejects with the reader error when the file cannot be read', async () => {
+        // Arrange
+        const failure = new Error('unreadable');
+        vi.stubGlobal('FileReader', class {
+            readAsText() {
+                this.error = failure;
+                this.onerror();
+            }
+        });
+
+        // Act, Assert
+        await expect(readFileText(new File([''], 'a.csv'))).rejects.toBe(failure);
     });
 });

@@ -160,14 +160,31 @@ describe('addEventListeners', () => {
     });
 
     it('closes modal when clicking overlay', () => {
+        // Arrange
         addEventListeners();
         addTransactionModal.style.display = 'block';
-        addTransactionModal.classList.add('modal');
-        // Simulate click on the modal overlay itself
-        const event = new Event('click', { bubbles: true });
-        Object.defineProperty(event, 'target', { value: addTransactionModal });
-        window.dispatchEvent(event);
+
+        // Act
+        addTransactionModal.click();
+
+        // Assert
         expect(addTransactionModal.style.display).toBe('none');
+    });
+
+    it('sorts from the button inside each sortable header', () => {
+        // Arrange
+        addEventListeners();
+        const headers = document.querySelectorAll('th.sortable');
+        const amountHeader = document.querySelector('th[data-sort="amount"]');
+
+        // Act
+        amountHeader.querySelector('button.sort-btn').click();
+
+        // Assert
+        expect(headers).toHaveLength(6);
+        headers.forEach(th => expect(th.querySelector('button.sort-btn')).not.toBeNull());
+        expect(currentSort).toMatchObject({ field: 'amount', direction: 'asc' });
+        expect(amountHeader.getAttribute('aria-sort')).toBe('ascending');
     });
 
     it('closes the import result dialog with OK', () => {

@@ -15,7 +15,7 @@ The page has three tabs: **Transactions**, **Balance Sheet**, and **Settings**.
 - Bulk select and delete transactions
 - Duplicate detection across imports
 - Import ignore list for transfers between your own accounts (e.g. card payments), with optional private entries in the gitignored personal keywords file
-- **Balance Sheet** per year: month-end asset balances (entered by hand, each in its asset's currency), net worth in CAD, income and one row per expense category, averages over closed months compared with the previous year, and yearly indicators (net worth change, saving rate, investment returns)
+- **Balance Sheet** per year: month-end asset balances (entered by hand in a spreadsheet-style grid — arrow keys, type to edit, Delete to clear — each in its asset's currency), net worth in CAD, income and one row per expense category, averages over closed months compared with the previous year, and yearly indicators (net worth change, saving rate, investment returns)
 - **Close / Reopen** a Balance Sheet month to mark it reviewed and count it in the averages; imports are never affected
 - **Settings**: USD → CAD and BRL → CAD rates (editable, or refreshed from the Bank of Canada), the single category list used everywhere, and asset definitions (assets are archived, never deleted)
 - **Backup / Restore** of all app data as one JSON file; a restore is validated first and replaces everything only after you confirm
@@ -94,7 +94,8 @@ js/
   main.js             # app initialization
   state.js            # shared mutable state (transactions, settings, balances, closed months, sort, filters)
   dom.js              # DOM element references
-  utils.js            # CSV line parsing, BRL-to-CAD conversion, HTML escaping
+  utils.js            # CSV line parsing, BRL-to-CAD conversion, local month keys, HTML escaping, file reading
+  constants.js        # shared literals: transaction types, base currency
   category-engine.js  # generic category keywords, auto-categorization logic (no DOM deps)
   personal-keywords.example.js  # template for optional gitignored personal-keywords.js
   categories.js       # loads keyword map, wraps categorizer, category dropdowns, UI handlers
@@ -107,6 +108,7 @@ js/
   backup.js           # backup file format and validation (no DOM deps)
   rates.js            # Bank of Canada exchange-rate fetch
   tabs.js             # tab switching
+  modal.js            # shared dialog behaviour: focus, Escape, ×, backdrop
   transactions.js     # transaction CRUD, filtering, deduplication
   ui.js               # rendering, sorting, summary updates
   import-export.js    # CSV import orchestration (registry-based), export

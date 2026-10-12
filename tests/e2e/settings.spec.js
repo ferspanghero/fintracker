@@ -219,3 +219,26 @@ test('E22 — cancelling a restore changes nothing', async ({ page }) => {
     expect(await allData(page)).toEqual(before);
     await expect(page.locator('#assets-body tr')).toHaveCount(2);
 });
+
+test('E28 — Escape dismisses a restore and forgets the chosen file', async ({ page }) => {
+    // Arrange
+    await openApp(page, SEEDED);
+    const before = await allData(page);
+    await openTab(page, 'Settings');
+    const other = {
+        app: 'fintracker', version: 1, exportedAt: '2026-10-11T00:00:00.000Z',
+        settings: makeSettings(), transactions: [], balances: {}, closedMonths: []
+    };
+    await restoreFile(page, 'other.json', JSON.stringify(other));
+    await expect(page.getByRole('dialog', { name: 'Restore backup' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Cancel' })).toBeFocused();
+
+    // Act
+    await page.keyboard.press('Escape');
+    await page.evaluate(() => document.getElementById('restore-confirm-btn').click());
+
+    // Assert
+    await expect(page.locator('#restore-modal')).toBeHidden();
+    expect(await allData(page)).toEqual(before);
+});
+

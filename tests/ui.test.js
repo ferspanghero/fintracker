@@ -135,6 +135,21 @@ describe('renderTransactions', () => {
         ...overrides
     });
 
+    it('labels each row control with the transaction it acts on', () => {
+        // Arrange
+        transactions.push(makeTxn({ description: 'Groceries' }));
+
+        // Act
+        renderTransactions();
+
+        // Assert
+        const row = document.querySelector('#transactions-body tr');
+        expect(row.querySelector('.transaction-checkbox').getAttribute('aria-label')).toBe('Select Groceries');
+        expect(row.querySelector('.category-edit-dropdown').getAttribute('aria-label')).toBe('Category for Groceries');
+        expect(row.querySelector('.delete-btn').getAttribute('aria-label')).toBe('Delete Groceries');
+        expect(document.getElementById('select-all-checkbox').getAttribute('aria-label')).toBe('Select all transactions');
+    });
+
     it('row category dropdown lists the Settings categories for the type', () => {
         // Arrange
         settings.categories.expense = ['Casa', 'Pets', 'Sem Categoria'];
@@ -454,5 +469,17 @@ describe('updateSortIcons', () => {
         updateSortIcons();
         const amountIcon = document.querySelector('th[data-sort="amount"] .sort-icon');
         expect(amountIcon.textContent).toBe('');
+    });
+
+    it.each([['asc', 'ascending'], ['desc', 'descending']])('marks the sorted column as %s for screen readers', (direction, ariaSort) => {
+        // Arrange
+        Object.assign(currentSort, { field: 'amount', direction });
+
+        // Act
+        updateSortIcons();
+
+        // Assert
+        expect(document.querySelector('th[data-sort="amount"]').getAttribute('aria-sort')).toBe(ariaSort);
+        expect(document.querySelector('th[data-sort="date"]').hasAttribute('aria-sort')).toBe(false);
     });
 });

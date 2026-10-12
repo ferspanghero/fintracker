@@ -36,8 +36,9 @@ Persist + Re-render (storage.js → ui.js)
 **Pure logic** (no DOM dependencies):
 - `category-engine.js` — keyword-based auto-categorization. Exposes `loadCategoryKeywords(path?)`, which merges generic keywords with optional personal overrides loaded from a gitignored file, and `categorizeTransaction(description, type, keywords)`, which scans a pre-built map. Holds no module-level state — callers (the UI layer and the benchmark tool) pass the path they want and hold the resulting map.
 - `ignore-rules.js` — import ignore list for transfers between your own accounts. Exposes `loadIgnorePrefixes(path?)`, which merges an optional `ignorePrefixes` export from the same gitignored personal file with generic bank-wording prefixes (trimmed, lowercased, blanks dropped), and `isIgnored(description, prefixes)`, a case-insensitive starts-with match on the whole description.
-- `utils.js` — CSV line tokenizer (handles quoting), currency conversion, local month/date keys, HTML escaping.
-- `settings.js` — rules for the settings object: add/remove categories (only unused ones, `Sem Categoria` is permanent), add/rename/archive assets, set rates. Every mutator returns `{ ok }` or `{ ok: false, error }` with a user-facing message and changes nothing on failure.
+- `utils.js` — CSV line tokenizer (handles quoting), currency conversion, local month/date keys, HTML escaping, reading a file as text.
+- `constants.js` — literals shared across modules: transaction types and the base currency.
+- `settings.js` — rules for the settings object: add/remove categories (only unused ones, `Sem Categoria` is permanent), `ensureCategory` for write paths that bring categories from outside the app, add/rename/archive assets, set rates. Every mutator returns `{ ok }` or `{ ok: false, error }` with a user-facing message and changes nothing on failure.
 - `balance-sheet.js` — `buildYear(...)` derives one year of the Balance Sheet (month states, asset rows, net worth, income/expense rows with closed-month averages and the previous-year comparison, indicators) from data passed in, including `today`. Also the balance, Copy-previous and close/reopen helpers.
 - `backup.js` — backup envelope and `validateBackup`, which collects every problem before anything is applied.
 - `rates.js` — fetches and parses the latest Bank of Canada USD → CAD and BRL → CAD rates (injectable `fetch`, timeout).
@@ -48,16 +49,17 @@ Persist + Re-render (storage.js → ui.js)
 - `ui.js` — renders transaction table, summary totals, sort icons.
 - `categories.js` — wraps `category-engine.js` with dropdown rendering. Both the dropdowns and the categorizer read `settings.categories`; the keyword map is narrowed to those categories on every call.
 - `tabs.js` — tab bar; one panel visible at a time.
-- `balance-sheet-ui.js` — Balance Sheet tab: year selector, grid, inline balance editing, close/reopen, Copy prev., indicators.
+- `modal.js` — shared dialog behaviour: open/close, focus moved in and returned, the page behind made inert, closing with ×, the backdrop or Escape (each close fires `modal-close`).
+- `balance-sheet-ui.js` — Balance Sheet tab: year selector, grid, inline balance editing (mouse or keyboard), close/reopen, Copy prev., indicators.
 - `settings-ui.js` — Settings tab: rates and refresh, category chips, assets table, Backup download and Restore.
 
 **Orchestration**:
-- `import-export.js` — CSV import pipeline (file reading → parser registry → auto-categorization → ignore list → duplicate detection → state push) and CSV export.
+- `import-export.js` — CSV import pipeline (files read one at a time → parser registry → auto-categorization → ignore list → duplicate detection → state push) and CSV export.
 - `transactions.js` — CRUD, filtering, and `saveAndRefresh()` helper that persists to localStorage then re-renders.
 - `events.js` — wires all DOM event listeners.
 - `main.js` — bootstrap: sets defaults, loads localStorage, populates dropdowns, attaches listeners, wires the tabs. The Balance Sheet and Settings re-render when their tab opens.
 
-**Persistence** (`storage.js`) — the only localStorage reader/writer. Keys: `transactions`, `settings`, `balances`, `closedMonths`. Dates are stored as ISO strings and rehydrated to `Date` objects on load. Missing keys load as a fresh install; loading never writes. `saveData()` reports whether the save succeeded.
+**Persistence** (`storage.js`) — the only localStorage reader/writer. Keys: `transactions`, `settings`, `balances`, `closedMonths`. Dates are stored as ISO strings and rehydrated to `Date` objects on load. Missing keys load as a fresh install; loading never writes. `saveData()` writes every key; `saveBalanceSheet()` writes only `balances` and `closedMonths`, which is all the Balance Sheet grid changes. Both report whether the save succeeded.
 
 ## Data Model
 
@@ -75,12 +77,12 @@ Persist + Re-render (storage.js → ui.js)
 ['YYYY-MM', ...]
 ```
 
-A fresh install has only `Sem Categoria` in each category list, no assets, and no rates. Transaction categories always come from the Settings list: imports add unknown FinTracker categories to it, and manual entries default to `Sem Categoria`. A backup is the four collections wrapped in `{ app: 'fintracker', version: 1, exportedAt, ... }`.
+A fresh install has only `Sem Categoria` in each category list, no assets, and no rates. Transaction categories always come from the Settings list: an imported row that is kept (not ignored, not a duplicate) adds its category if the list lacks it, and manual entries default to `Sem Categoria`. A backup is the four collections wrapped in `{ app: 'fintracker', version: 1, exportedAt, ... }`.
 
 ## CSV Import Pipeline
 
 ```
-File Input → FileReader → parseCSV(content, fileType, ctx = { rates })
+File Input → readFileText (one file at a time) → parseCSV(content, fileType, ctx = { rates })
                               │
                               ├─ fileType === 'auto' → detectParser(headerRow)
                               │                          iterates parsers until detect() matches
@@ -93,8 +95,7 @@ File Input → FileReader → parseCSV(content, fileType, ctx = { rates })
                               ▼
                          For each line:
                            parser.parseLine(line, ctx) → { date, description, amount, type, account }
-                           orchestrator adds category via categorizeTransaction()
-                           parser.afterParse() if defined (FinTracker: registers custom categories in Settings)
+                           orchestrator adds a category via categorizeTransaction() when the parser set none
                               │
                               ▼
                          Ignore list (description starts with an ignore prefix → skipped, counted)
@@ -103,7 +104,10 @@ File Input → FileReader → parseCSV(content, fileType, ctx = { rates })
                          Duplicate detection (composite key: date-description-amount-type-account)
                               │
                               ▼
-                         Push to transactions[] → saveAndRefresh() → result dialog with per-month counts
+                         ensureCategory (adds the row's category to Settings if missing) → push to transactions[]
+                              │
+                              ▼
+                         saveAndRefresh() → result dialog with per-month counts
 ```
 
 ### Parser Contract
@@ -119,12 +123,11 @@ Each parser in `js/parsers/` exports a plain object:
     detect(headerRow) {},    // returns boolean; headerRow arrives lowercased, trimmed, quotes stripped
     parseDate(dateStr) {},   // returns Date or null
     validateContext?(ctx) {},// optional; returns an error message to refuse the whole file, or null
-    parseLine(line, ctx) {}, // returns transaction object or null; ctx = { rates }
-    afterParse?(txn, ctx) {} // optional post-processing; ctx = { settings }
+    parseLine(line, ctx) {}  // returns transaction object or null; ctx = { rates }
 }
 ```
 
-`parseLine` returns `amount` as a positive number and derives `type` from the amount's sign or the file's debit/credit columns — never from a bank's transaction-type label, which misses refunds and other credits.
+`parseLine` may set `category` (a FinTracker export carries one); otherwise the orchestrator categorizes the row. It returns `amount` as a positive number and derives `type` from the amount's sign or the file's debit/credit columns — never from a bank's transaction-type label, which misses refunds and other credits.
 
 Adding a new bank format: create a parser file, add one import to `parsers/index.js`.
 

@@ -7,6 +7,7 @@ import {
 import { dateStrInputToLocalDate, escapeHTML } from './utils.js';
 import { getFilteredTransactions, updateTransactionField, deleteTransaction } from './transactions.js';
 import { UNCATEGORIZED } from './category-engine.js';
+import { INCOME, EXPENSE } from './constants.js';
 
 // Render transactions
 export function renderTransactions() {
@@ -32,8 +33,8 @@ export function renderTransactions() {
 
         // Format amount
         const amountFormatted = transaction.amount.toFixed(2);
-        const amountClass = transaction.type === 'income' ? 'positive' : 'negative';
-        const amountDisplay = transaction.type === 'income' ? `$${amountFormatted}` : `-$${amountFormatted}`;
+        const amountClass = transaction.type === INCOME ? 'positive' : 'negative';
+        const amountDisplay = transaction.type === INCOME ? `$${amountFormatted}` : `-$${amountFormatted}`;
 
         // A category missing from Settings (e.g. data restored before its category
         // was added) stays visible instead of silently showing another option.
@@ -42,16 +43,18 @@ export function renderTransactions() {
             ? settings.categories[transaction.type]
             : [...settings.categories[transaction.type], currentCategory];
 
+        const description = escapeHTML(transaction.description);
+
         // Create cells
         row.innerHTML = `
             <td>
-                <input type="checkbox" class="transaction-checkbox">
+                <input type="checkbox" class="transaction-checkbox" aria-label="Select ${description}">
             </td>
             <td class="editable" data-field="date">${escapeHTML(dateFormatted)}</td>
             <td class="editable td-longtext" data-field="description">${escapeHTML(transaction.description)}</td>
             <td class="editable ${amountClass}" data-field="amount">${escapeHTML(amountDisplay)}</td>
             <td class="editable" data-field="category">
-                <select class="category-edit-dropdown">
+                <select class="category-edit-dropdown" aria-label="Category for ${description}">
                     ${categoryOptions.map(category =>
                         `<option value="${escapeHTML(category)}" ${category === currentCategory ? 'selected' : ''}>${escapeHTML(category)}</option>`
                     ).join('')}
@@ -61,7 +64,7 @@ export function renderTransactions() {
             <td class="editable" data-field="type">${escapeHTML(transaction.type)}</td>
             <td>
                 <div class="action-buttons">
-                    <button class="delete-btn">Delete</button>
+                    <button class="delete-btn" aria-label="Delete ${description}">Delete</button>
                 </div>
             </td>
         `;
@@ -98,8 +101,8 @@ export function sortTransactions(transactionsToSort) {
 
         if (field === 'amount') {
             // Some amounts may be absolute, so need to treat them all equally
-            const amountA = (Math.abs(a.amount) ?? 0) * (a.type === 'expense' ? -1 : 1);
-            const amountB = (Math.abs(b.amount) ?? 0) * (b.type === 'expense' ? -1 : 1);
+            const amountA = (Math.abs(a.amount) ?? 0) * (a.type === EXPENSE ? -1 : 1);
+            const amountB = (Math.abs(b.amount) ?? 0) * (b.type === EXPENSE ? -1 : 1);
 
             return isAsc ? amountA - amountB : amountB - amountA;
         }
@@ -131,7 +134,7 @@ export function updateSummary() {
     let totalExpenses = 0;
 
     filteredTransactions.forEach(transaction => {
-        if (transaction.type === 'income') {
+        if (transaction.type === INCOME) {
             totalIncome += transaction.amount;
         } else {
             totalExpenses += transaction.amount;
@@ -239,15 +242,17 @@ export function handleSort(field) {
 
 // Update sort icons
 export function updateSortIcons() {
-    // Clear all sort icons
-    document.querySelectorAll('.sort-icon').forEach(icon => {
-        icon.textContent = '';
+    // Clear all sort icons and states
+    document.querySelectorAll('th.sortable').forEach(th => {
+        th.querySelector('.sort-icon').textContent = '';
+        th.removeAttribute('aria-sort');
     });
 
     // Set the icon for the current sort field
     const th = document.querySelector(`th[data-sort="${currentSort.field}"]`);
     if (th) {
-        const icon = th.querySelector('.sort-icon');
-        icon.textContent = currentSort.direction === 'asc' ? '▲' : '▼';
+        const ascending = currentSort.direction === 'asc';
+        th.querySelector('.sort-icon').textContent = ascending ? '▲' : '▼';
+        th.setAttribute('aria-sort', ascending ? 'ascending' : 'descending');
     }
 }

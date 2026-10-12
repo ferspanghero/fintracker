@@ -116,10 +116,16 @@ describe('parseCSV', () => {
         expect(result.transactions[0].category).toBeTruthy();
     });
 
-    it('adds new fintracker categories to global categories list', () => {
+    it('leaves the Settings category list unchanged', () => {
+        // Arrange
         const csv = 'Date,Description,Category,Account,Amount,Type\n2025-04-12,Test,ImportedCat,Amex,50,expense';
+        const before = structuredClone(settings.categories);
+
+        // Act
         parseCSV(csv, 'fintracker');
-        expect(settings.categories.expense).toContain('ImportedCat');
+
+        // Assert
+        expect(settings.categories).toEqual(before);
     });
 });
 
@@ -195,23 +201,20 @@ describe('handleImport', () => {
         expect(window.alert).toHaveBeenCalledWith('Please select at least one file to import.');
     });
 
-    it('disables import button and starts processing', () => {
-        const OriginalFileReader = globalThis.FileReader;
-        const mock = { readAsText: vi.fn(), onload: null, onerror: null };
-        globalThis.FileReader = function() { return mock; };
+    it('disables the import button while the selected files are read', async () => {
+        // Arrange
+        fileTypeSelect.value = 'amex';
+        const file = new File(['Date,Date Processed,Description,Amount\n28 Feb 2025,28 Feb 2025,STARBUCKS,1'], 'test.csv');
+        Object.defineProperty(fileInput, 'files', { value: [file], writable: true, configurable: true });
 
-        Object.defineProperty(fileInput, 'files', {
-            value: { length: 1, 0: { name: 'test.csv' } },
-            writable: true,
-            configurable: true
-        });
+        // Act
+        const done = handleImport();
 
-        handleImport();
+        // Assert
         expect(importBtn.disabled).toBe(true);
-        expect(importBtn.textContent).toBe('Importing...');
-        expect(mock.readAsText).toHaveBeenCalled();
-
-        globalThis.FileReader = OriginalFileReader;
+        await done;
+        expect(importBtn.disabled).toBe(false);
+        expect(transactions).toHaveLength(1);
     });
 });
 
@@ -292,32 +295,27 @@ describe('formatImportResult', () => {
 });
 
 describe('processFiles', () => {
-    let OriginalFileReader;
-
-    beforeEach(() => {
-        OriginalFileReader = globalThis.FileReader;
-    });
-
     afterEach(() => {
-        globalThis.FileReader = OriginalFileReader;
         vi.restoreAllMocks();
     });
 
-    function mockFileReader() {
-        const mock = { readAsText: vi.fn(), onload: null, onerror: null };
-        globalThis.FileReader = function() { return mock; };
-        return mock;
-    }
+    const AMEX_HEADER = 'Date,Date Processed,Description,Amount';
+    const FINTRACKER_HEADER = 'Date,Description,Category,Account,Amount,Type';
+    const files = (...names) => names.map(name => ({ name }));
+    const readerOf = (...contents) => {
+        let call = 0;
 
+        return vi.fn(async () => contents[call++]);
+    };
     const dialog = () => document.getElementById('import-result-modal');
     const dialogText = () => dialog().textContent.replace(/\s+/g, ' ');
 
-    it('shows the result dialog and re-enables the button when all files are processed', () => {
+    it('shows the result dialog and re-enables the button when there are no files', async () => {
         // Arrange
         importBtn.disabled = true;
 
         // Act
-        processFiles({ length: 0 }, 0);
+        await processFiles([], readerOf());
 
         // Assert
         expect(importBtn.disabled).toBe(false);
@@ -326,49 +324,43 @@ describe('processFiles', () => {
         expect(dialogText()).toContain('No transactions were imported from 0 files.');
     });
 
-    it('reads a file, adds its rows and lists them per month', () => {
+    it('reads a file, adds its rows and lists them per month', async () => {
         // Arrange
-        const csvContent = 'Date,Date Processed,Description,Amount\n28 Feb 2025,28 Feb 2025,STARBUCKS,12.50\n01 Mar 2025,01 Mar 2025,UBER,5';
         fileTypeSelect.value = 'amex';
-        const mock = mockFileReader();
-        const file = { name: 'test.csv' };
+        const [file] = files('test.csv');
+        const readText = readerOf(`${AMEX_HEADER}\n28 Feb 2025,28 Feb 2025,STARBUCKS,12.50\n01 Mar 2025,01 Mar 2025,UBER,5`);
 
         // Act
-        processFiles({ length: 1, 0: file }, 0);
-        mock.onload({ target: { result: csvContent } });
+        await processFiles([file], readText);
 
         // Assert
-        expect(mock.readAsText).toHaveBeenCalledWith(file, 'UTF-8');
+        expect(readText).toHaveBeenCalledWith(file);
         expect(transactions.map(t => t.description)).toEqual(['STARBUCKS', 'UBER']);
         expect(dialogText()).toContain('Imported 2 transactions from 1 file:');
         expect(dialogText()).toContain('2025-02: 1 added');
         expect(dialogText()).toContain('2025-03: 1 added');
     });
 
-    it('saves imported rows', () => {
+    it('saves imported rows', async () => {
         // Arrange
         fileTypeSelect.value = 'amex';
-        const mock = mockFileReader();
 
         // Act
-        processFiles({ length: 1, 0: { name: 'test.csv' } }, 0);
-        mock.onload({ target: { result: 'Date,Date Processed,Description,Amount\n28 Feb 2025,28 Feb 2025,STARBUCKS,12.50' } });
+        await processFiles(files('test.csv'), readerOf(`${AMEX_HEADER}\n28 Feb 2025,28 Feb 2025,STARBUCKS,12.50`));
 
         // Assert
         expect(JSON.parse(localStorage.getItem('transactions'))).toHaveLength(1);
     });
 
-    it('detects duplicates and skips them', () => {
+    it('detects duplicates and skips them', async () => {
         // Arrange
         fileTypeSelect.value = 'amex';
         transactions.push(
             { date: new Date(2025, 1, 28), description: 'STARBUCKS', amount: 12.50, type: 'expense', category: 'Alimentação', account: 'Amex' }
         );
-        const mock = mockFileReader();
 
         // Act
-        processFiles({ length: 1, 0: { name: 'test.csv' } }, 0);
-        mock.onload({ target: { result: 'Date,Date Processed,Description,Amount\n28 Feb 2025,28 Feb 2025,STARBUCKS,12.50' } });
+        await processFiles(files('test.csv'), readerOf(`${AMEX_HEADER}\n28 Feb 2025,28 Feb 2025,STARBUCKS,12.50`));
 
         // Assert
         expect(transactions.length).toBe(1);
@@ -376,49 +368,62 @@ describe('processFiles', () => {
         expect(dialogText()).toContain('1 duplicate skipped');
     });
 
-    it('counts a row that is both ignored and a duplicate as ignored only', () => {
+    it('counts a row that is both ignored and a duplicate as ignored only', async () => {
         // Arrange
         fileTypeSelect.value = 'amex';
         transactions.push(
             { date: new Date(2025, 1, 28), description: 'PAYMENT RECEIVED - THANK YOU', amount: 300, type: 'income', category: 'Outro', account: 'Amex' }
         );
-        const mock = mockFileReader();
 
         // Act
-        processFiles({ length: 1, 0: { name: 'test.csv' } }, 0);
-        mock.onload({ target: { result: 'Date,Date Processed,Description,Amount\n28 Feb 2025,28 Feb 2025,PAYMENT RECEIVED - THANK YOU,-300.00' } });
+        await processFiles(files('test.csv'), readerOf(`${AMEX_HEADER}\n28 Feb 2025,28 Feb 2025,PAYMENT RECEIVED - THANK YOU,-300.00`));
 
         // Assert
         expect(transactions.length).toBe(1);
         expect(dialogText()).toContain('0 duplicates skipped · 1 matched the ignore list · 0 errors');
     });
 
-    it('carries counts across files', () => {
+    it('reads files one after another and carries counts across them', async () => {
         // Arrange
         fileTypeSelect.value = 'amex';
-        const csvContent = 'Date,Date Processed,Description,Amount\n28 Feb 2025,28 Feb 2025,PAYMENT RECEIVED - THANK YOU,-300.00\n28 Feb 2025,28 Feb 2025,STARBUCKS,1';
-        const mock = mockFileReader();
+        const csvContent = `${AMEX_HEADER}\n28 Feb 2025,28 Feb 2025,PAYMENT RECEIVED - THANK YOU,-300.00\n28 Feb 2025,28 Feb 2025,STARBUCKS,1`;
+        const readText = readerOf(csvContent, csvContent);
+        const [a, b] = files('a.csv', 'b.csv');
 
         // Act
-        processFiles({ length: 2, 0: { name: 'a.csv' }, 1: { name: 'b.csv' } }, 0);
-        mock.onload({ target: { result: csvContent } });
-        mock.onload({ target: { result: csvContent } });
+        await processFiles([a, b], readText);
 
         // Assert
+        expect(readText.mock.calls).toEqual([[a], [b]]);
         expect(dialogText()).toContain('Imported 1 transaction from 2 files:');
         expect(dialogText()).toContain('1 duplicate skipped · 2 matched the ignore list');
     });
 
-    it('reports a file the parser rejects by name and imports nothing from it', () => {
+    it('shows which file is being read on the button', async () => {
+        // Arrange
+        fileTypeSelect.value = 'amex';
+        const seen = [];
+        const readText = vi.fn(async () => {
+            seen.push(importBtn.textContent);
+
+            return `${AMEX_HEADER}\n28 Feb 2025,28 Feb 2025,TEST,10`;
+        });
+
+        // Act
+        await processFiles(files('a.csv', 'b.csv'), readText);
+
+        // Assert
+        expect(seen).toEqual(['Importing (1/2)...', 'Importing (2/2)...']);
+    });
+
+    it('reports a file the parser rejects by name and imports nothing from it', async () => {
         // Arrange
         fileTypeSelect.value = 'bradesco';
         settings.rates.BRL = null;
         vi.spyOn(console, 'error').mockImplementation(() => {});
-        const mock = mockFileReader();
 
         // Act
-        processFiles({ length: 1, 0: { name: 'brl.csv' } }, 0);
-        mock.onload({ target: { result: 'Data;Histórico;Docto.;Crédito (R$);Débito (R$);Saldo (R$)\n01/03/2025;SALARIO;1;5,00;;7,00' } });
+        await processFiles(files('brl.csv'), readerOf('Data;Histórico;Docto.;Crédito (R$);Débito (R$);Saldo (R$)\n01/03/2025;SALARIO;1;5,00;;7,00'));
 
         // Assert
         expect(transactions).toHaveLength(0);
@@ -426,90 +431,98 @@ describe('processFiles', () => {
         expect(dialogText()).toContain('1 error');
     });
 
-    it('lists categories brought in by an import in the filter dropdown', () => {
+    it('adds a new category from an imported row to Settings and the filter dropdown', async () => {
         // Arrange
         fileTypeSelect.value = 'fintracker';
-        const mock = mockFileReader();
 
         // Act
-        processFiles({ length: 1, 0: { name: 'ft.csv' } }, 0);
-        mock.onload({ target: { result: 'Date,Description,Category,Account,Amount,Type\n2026-01-01,Vet,Pets,TD,10,expense' } });
+        await processFiles(files('ft.csv'), readerOf(`${FINTRACKER_HEADER}\n2026-01-01,Vet,Pets,TD,10,expense`));
 
         // Assert
+        expect(settings.categories.expense).toContain('Pets');
         const options = Array.from(document.getElementById('category-select').options).map(o => o.value);
         expect(options).toContain('Pets');
     });
 
-    it('handles empty parse results', () => {
+    it('files an imported row under the stored spelling of a known category', async () => {
+        // Arrange
+        fileTypeSelect.value = 'fintracker';
+        const before = [...settings.categories.expense];
+
+        // Act
+        await processFiles(files('ft.csv'), readerOf(`${FINTRACKER_HEADER}\n2026-01-01,Rent,CASA,TD,10,expense`));
+
+        // Assert
+        expect(transactions[0].category).toBe('Casa');
+        expect(settings.categories.expense).toEqual(before);
+    });
+
+    it('does not add categories from rows skipped as duplicates or ignored', async () => {
+        // Arrange
+        fileTypeSelect.value = 'fintracker';
+        transactions.push(
+            { date: new Date(2026, 0, 1), description: 'Vet', amount: 10, type: 'expense', category: 'Casa', account: 'TD' }
+        );
+        const before = structuredClone(settings.categories);
+        const csv = `${FINTRACKER_HEADER}\n2026-01-01,Vet,Pets,TD,10,expense\n2026-01-02,PAYMENT RECEIVED - THANK YOU,Transfers,TD,50,income`;
+
+        // Act
+        await processFiles(files('ft.csv'), readerOf(csv));
+
+        // Assert
+        expect(settings.categories).toEqual(before);
+        expect(dialogText()).toContain('1 duplicate skipped · 1 matched the ignore list');
+    });
+
+    it('warns about a file without transactions', async () => {
         // Arrange
         fileTypeSelect.value = 'amex';
         const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-        const mock = mockFileReader();
 
         // Act
-        processFiles({ length: 1, 0: { name: 'empty.csv' } }, 0);
-        mock.onload({ target: { result: 'Date,Date Processed,Description,Amount\n' } });
+        await processFiles(files('empty.csv'), readerOf(`${AMEX_HEADER}\n`));
 
         // Assert
         expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('empty.csv'));
         expect(dialogText()).toContain('No transactions were imported from 1 file.');
     });
 
-    it('reports a file that cannot be read', () => {
+    it('reports a file that cannot be read and goes on with the next one', async () => {
         // Arrange
+        fileTypeSelect.value = 'amex';
         vi.spyOn(console, 'error').mockImplementation(() => {});
-        const mock = mockFileReader();
+        const readText = vi.fn()
+            .mockRejectedValueOnce(new Error('read error'))
+            .mockResolvedValueOnce(`${AMEX_HEADER}\n28 Feb 2025,28 Feb 2025,STARBUCKS,1`);
 
         // Act
-        processFiles({ length: 1, 0: { name: 'error.csv' } }, 0);
-        mock.onerror({ target: { error: new Error('read error') } });
+        await processFiles(files('error.csv', 'ok.csv'), readText);
 
         // Assert
         expect(dialogText()).toContain("error.csv: couldn't be read. Check the file encoding and format.");
         expect(dialogText()).toContain('1 error');
+        expect(transactions).toHaveLength(1);
     });
 
-    it('reports parse errors in the counts', () => {
+    it('reports parse errors in the counts', async () => {
         // Arrange
         fileTypeSelect.value = 'fintracker';
         vi.spyOn(console, 'error').mockImplementation(() => {});
-        const mock = mockFileReader();
-        const csvContent = 'Date,Description,Category,Account,Amount,Type\n2025-01-01,Test,,Amex,10,badtype\n2025-01-01,Valid,Casa,Amex,10,expense';
+        const csvContent = `${FINTRACKER_HEADER}\n2025-01-01,Test,,Amex,10,badtype\n2025-01-01,Valid,Casa,Amex,10,expense`;
 
         // Act
-        processFiles({ length: 1, 0: { name: 'mixed.csv' } }, 0);
-        mock.onload({ target: { result: csvContent } });
+        await processFiles(files('mixed.csv'), readerOf(csvContent));
 
         // Assert
         expect(dialogText()).toContain('1 error');
     });
 
-    it('updates button text to show progress', () => {
-        // Arrange
-        fileTypeSelect.value = 'amex';
-        const mocks = [];
-        globalThis.FileReader = function() {
-            const m = { readAsText: vi.fn(), onload: null, onerror: null };
-            mocks.push(m);
-            return m;
-        };
-
-        // Act
-        processFiles({ length: 2, 0: { name: 'a.csv' }, 1: { name: 'b.csv' } }, 0);
-        mocks[0].onload({ target: { result: 'Date,Date Processed,Description,Amount\n28 Feb 2025,28 Feb 2025,TEST,10' } });
-
-        // Assert
-        expect(importBtn.textContent).toContain('1/2');
-    });
-
-    it('escapes file names and messages in the dialog', () => {
+    it('escapes file names and messages in the dialog', async () => {
         // Arrange
         vi.spyOn(console, 'error').mockImplementation(() => {});
-        const mock = mockFileReader();
 
         // Act
-        processFiles({ length: 1, 0: { name: '<img src=x onerror=alert(1)>.csv' } }, 0);
-        mock.onerror({ target: { error: new Error('read error') } });
+        await processFiles(files('<img src=x onerror=alert(1)>.csv'), vi.fn().mockRejectedValue(new Error('read error')));
 
         // Assert
         expect(dialog().querySelector('img')).toBeNull();

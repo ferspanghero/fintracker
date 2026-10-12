@@ -72,3 +72,16 @@ export function escapeHTML(str) {
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
 }
+
+/**
+ * Reads a File or Blob as UTF-8 text (FileReader works in every supported browser and in jsdom).
+ * @returns {Promise<string>} rejects with the reader's error
+ */
+export function readFileText(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(reader.error);
+        reader.readAsText(file, 'UTF-8');
+    });
+}

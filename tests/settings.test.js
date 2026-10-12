@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-    emptySettings, findCategory, countCategoryUsage, addCategory, removeCategory,
+    emptySettings, findCategory, countCategoryUsage, addCategory, ensureCategory, removeCategory,
     addAsset, renameAsset, setAssetCurrency, setAssetArchived, setRate, applyRates,
     CURRENCIES, SETTINGS_VERSION
 } from '../js/settings.js';
@@ -135,6 +135,57 @@ describe('addCategory', () => {
 
         // Assert
         expect(result).toEqual({ ok: false, error: 'Unknown category type "transfer".' });
+    });
+});
+
+describe('ensureCategory', () => {
+    it('returns the stored spelling of a known category without adding it', () => {
+        // Arrange
+        const settings = emptySettings();
+        addCategory(settings, 'expense', 'Casa');
+
+        // Act
+        const name = ensureCategory(settings, 'expense', '  casa ');
+
+        // Assert
+        expect(name).toBe('Casa');
+        expect(settings.categories.expense).toEqual(['Casa', UNCATEGORIZED]);
+    });
+
+    it('adds an unknown category before Sem Categoria and returns its trimmed name', () => {
+        // Arrange
+        const settings = emptySettings();
+
+        // Act
+        const name = ensureCategory(settings, 'income', ' Pets ');
+
+        // Assert
+        expect(name).toBe('Pets');
+        expect(settings.categories.income).toEqual(['Pets', UNCATEGORIZED]);
+    });
+
+    it('adds a repeated unknown category only once', () => {
+        // Arrange
+        const settings = emptySettings();
+
+        // Act
+        ensureCategory(settings, 'expense', 'Pets');
+        ensureCategory(settings, 'expense', 'PETS');
+
+        // Assert
+        expect(settings.categories.expense).toEqual(['Pets', UNCATEGORIZED]);
+    });
+
+    it.each(['', '   ', null, undefined])('files a blank name (%j) under Sem Categoria', blank => {
+        // Arrange
+        const settings = emptySettings();
+
+        // Act
+        const name = ensureCategory(settings, 'expense', blank);
+
+        // Assert
+        expect(name).toBe(UNCATEGORIZED);
+        expect(settings.categories.expense).toEqual([UNCATEGORIZED]);
     });
 });
 
