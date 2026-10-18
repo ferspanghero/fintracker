@@ -23,8 +23,8 @@ export function previousMonthKey(key) {
     return monthKey(new Date(year, month - 2, 1));
 }
 
-/** @returns {string[]} the 12 month keys of `year` */
-export const monthKeysOf = year => Array.from({ length: 12 }, (_, i) => `${year}-${String(i + 1).padStart(2, '0')}`);
+// The 12 month keys of `year`.
+const monthKeysOf = year => Array.from({ length: 12 }, (_, i) => `${year}-${String(i + 1).padStart(2, '0')}`);
 const sum = values => values.reduce((total, v) => total + (v ?? 0), 0);
 const mean = values => (values.length ? sum(values) / values.length : null);
 

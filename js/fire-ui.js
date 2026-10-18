@@ -117,6 +117,9 @@ function projectionRow(row, latestMonth) {
         ? `<span class="act">${money(row.start)} <span class="when">${MONTH_NAMES[Number(latestMonth.slice(5)) - 1]}</span></span>`
         : money(row.start);
     const taxDrag = row.taxDrag === null ? DASH : formatMoney(-row.taxDrag);
+    // Rounded before signing, so a change of a few cents reads $0 rather than +$0 or -$0.
+    const rounded = row.change === null ? null : Math.round(row.change);
+    const change = rounded === null ? DASH : `${rounded > 0 ? '+' : ''}${formatMoney(rounded)}`;
     const badge = row.fi ? '<span class="fi-badge">FI</span>' : '';
     const strong = text => (row.fi ? `<b>${text}</b>` : text);
 
@@ -124,9 +127,8 @@ function projectionRow(row, latestMonth) {
         <th scope="row" class="y">${row.year}${state}</th>
         <td>${row.age ?? DASH}</td>
         <td class="r">${start}</td>
-        <td class="r">${money(row.growth)}</td>
+        <td class="r">${change}</td>
         <td class="r${row.taxDrag ? ' neg' : ''}">${taxDrag}</td>
-        <td class="r">${money(row.saved)}</td>
         <td class="r">${strong(money(row.end))}</td>
         <td class="r">${strong(percent(row.swr, 2))}${badge}</td>
     </tr>`;
@@ -147,8 +149,8 @@ function renderProjection(model) {
         + 'Projected values are in today’s dollars.';
 
     const heads = [
-        ['colYear', 'Year', ''], ['colAge', 'Age', ''], ['colStart', 'Start', 'r'], ['colGrowth', 'Growth', 'r'],
-        ['colTaxDrag', 'Tax drag', 'r'], ['colSaved', 'Saved', 'r'], ['colEnd', 'End', 'r'], ['colSwr', 'SWR', 'r']
+        ['colYear', 'Year', ''], ['colAge', 'Age', ''], ['colStart', 'Start', 'r'], ['colChange', 'Change', 'r'],
+        ['colTaxDrag', 'Tax drag', 'r'], ['colEnd', 'End', 'r'], ['colSwr', 'SWR', 'r']
     ];
 
     fireProjection.innerHTML = `<thead><tr>${heads.map(([key, label, cls]) =>
@@ -295,6 +297,7 @@ function renderAssumptions(model) {
         ['swr', 'SWR', inputPercent(fire.swr)],
         ['withdrawalTax', 'Withdrawal tax', inputPercent(fire.withdrawalTax)],
         ['spending', 'Retirement spending', spending, model.spendingIsDefault],
+        ['yearlySaving', 'Yearly saving', `${formatMoney(model.saved)} (last 12 months, computed)`],
         ['expectedReturn', 'Expected return', inputPercent(fire.expectedReturn)],
         ['inflation', 'Inflation', inputPercent(fire.inflation)],
         ['nonRegTaxDrag', 'Non-reg tax drag', inputPercent(fire.nonRegTaxDrag)],

@@ -8,7 +8,7 @@ The page has four tabs: **Transactions**, **Balance Sheet**, **Investments & FIR
 
 - **Multi-bank CSV import** with automatic format detection and a per-month summary of what was added
 - **Auto-categorization** of transactions based on description keywords
-- Filter by date range, category, or free text search
+- Filter by date range (including any single year), category, or free text search
 - Financial summary (income, expenses, net balance)
 - Manual transaction entry with custom categories
 - Export filtered transactions to CSV

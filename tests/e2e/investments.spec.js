@@ -131,9 +131,9 @@ test('v4 E7/E8 — closed Decembers are actual years; an unclosed past December 
     // Assert
     await expect(yearRow(page, 2023)).toHaveClass('none');
     await expect(yearRow(page, 2024)).toHaveClass('actual');
-    await expect(yearRow(page, 2024).locator('td')).toHaveText(['34', '—', '—', '—', '—', '$800,000', '9.38%']);
+    await expect(yearRow(page, 2024).locator('td')).toHaveText(['34', '—', '—', '—', '$800,000', '9.38%']);
     await expect(yearRow(page, 2025)).toHaveClass('actual');
-    await expect(yearRow(page, 2025).locator('td')).toHaveText(['35', '$800,000', '$155,000', '—', '$45,000', '$1,000,000', '7.50%']);
+    await expect(yearRow(page, 2025).locator('td')).toHaveText(['35', '$800,000', '+$200,000', '—', '$1,000,000', '7.50%']);
     await expect(yearRow(page, 2025).locator('th .state')).toHaveText('Actual');
 });
 

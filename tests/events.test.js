@@ -7,7 +7,7 @@ import {
     textFilterInput, addTransactionBtn, exportCsvBtn, clearAllBtn,
     deleteSelectedBtn, selectAllCheckbox, transactionForm,
     transactionCategorySelect, addTransactionModal, startDateInput, endDateInput,
-    customDateContainer
+    customDateContainer, yearFilterSelect
 } from '../js/dom.js';
 
 describe('addEventListeners', () => {
@@ -26,6 +26,23 @@ describe('addEventListeners', () => {
         dateRangeSelect.dispatchEvent(new Event('change'));
         expect(currentFilter.startDate).toBeTruthy();
         expect(currentFilter.startDate.getMonth()).toBe(0);
+    });
+
+    it('wires the year select to filter by the chosen year', () => {
+        // Arrange
+        const makeTxn = date => ({ date, description: 'Test', amount: 1, type: 'expense', category: 'Casa', account: 'Amex' });
+        transactions.push(makeTxn(new Date(2019, 5, 1)), makeTxn(new Date(2024, 5, 1)));
+        addEventListeners();
+        dateRangeSelect.value = 'year';
+        dateRangeSelect.dispatchEvent(new Event('change'));
+        yearFilterSelect.value = '2019';
+
+        // Act
+        yearFilterSelect.dispatchEvent(new Event('change'));
+
+        // Assert
+        expect(currentFilter.startDate).toEqual(new Date(2019, 0, 1));
+        expect(currentFilter.endDate).toEqual(new Date(2019, 11, 31));
     });
 
     it('wires apply date filter button', () => {

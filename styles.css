@@ -246,6 +246,19 @@ button:focus-visible, input:focus-visible, select:focus-visible {
     margin-top: 10px;
 }
 
+.year-filter {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.year-filter label,
+.year-filter select {
+    margin-bottom: 0;
+}
+
 /* Summary section */
 .summary-section {
     margin-bottom: 20px;

@@ -4,6 +4,8 @@ export let fileInput;
 export let fileTypeSelect;
 export let dateRangeSelect;
 export let customDateContainer;
+export let yearFilterContainer;
+export let yearFilterSelect;
 export let startDateInput;
 export let endDateInput;
 export let applyDateFilterBtn;
@@ -106,6 +108,8 @@ export function refreshDom() {
     fileTypeSelect = document.getElementById('file-type');
     dateRangeSelect = document.getElementById('date-range');
     customDateContainer = document.getElementById('custom-date-container');
+    yearFilterContainer = document.getElementById('year-filter-container');
+    yearFilterSelect = document.getElementById('year-filter');
     startDateInput = document.getElementById('start-date');
     endDateInput = document.getElementById('end-date');
     applyDateFilterBtn = document.getElementById('apply-date-filter');

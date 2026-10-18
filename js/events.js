@@ -1,5 +1,5 @@
 import {
-    importBtn, dateRangeSelect, applyDateFilterBtn, categorySelect,
+    importBtn, dateRangeSelect, applyDateFilterBtn, yearFilterSelect, categorySelect,
     textFilterInput, addTransactionBtn, exportCsvBtn, clearAllBtn,
     deleteSelectedBtn, selectAllCheckbox, transactionForm,
     transactionCategorySelect, importResultModal, importResultOkBtn
@@ -7,7 +7,7 @@ import {
 import { initModals, closeModal } from './modal.js';
 import { currentFilter } from './state.js';
 import { handleImport, exportToCSV } from './import-export.js';
-import { handleDateRangeChange, applyCustomDateFilter, renderTransactions, updateSummary, handleSort } from './ui.js';
+import { handleDateRangeChange, applyCustomDateFilter, handleYearFilterChange, renderTransactions, updateSummary, handleSort } from './ui.js';
 import { handleCategoryFilterChange, handleCategorySelectChange, populateTransactionCategorySelect } from './categories.js';
 import { openAddTransactionModal, confirmClearAll, deleteSelectedTransactions, handleAddTransaction } from './transactions.js';
 
@@ -19,6 +19,7 @@ export function addEventListeners() {
     // Date range filter
     dateRangeSelect.addEventListener('change', handleDateRangeChange);
     applyDateFilterBtn.addEventListener('click', applyCustomDateFilter);
+    yearFilterSelect.addEventListener('change', handleYearFilterChange);
 
     // Category filter
     categorySelect.addEventListener('change', handleCategoryFilterChange);

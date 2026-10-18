@@ -50,7 +50,7 @@ Persist + Re-render (storage.js → ui.js)
 
 **DOM layer**:
 - `dom.js` — cached element references, with `refreshDom()` for test injection.
-- `ui.js` — renders transaction table, summary totals, sort icons.
+- `ui.js` — renders transaction table, summary totals, sort icons; applies the date-range filter, including the Select Year list of years with transactions.
 - `categories.js` — wraps `category-engine.js` with dropdown rendering. Both the dropdowns and the categorizer read `settings.categories`; the keyword map is narrowed to those categories on every call.
 - `tabs.js` — tab bar; one panel visible at a time.
 - `modal.js` — shared dialog behaviour: open/close, focus moved in and returned, the page behind made inert, closing with ×, the backdrop or Escape (each close fires `modal-close`).

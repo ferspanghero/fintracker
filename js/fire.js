@@ -3,7 +3,7 @@
 // conservative tax drag, and allocation against target. No DOM or storage access.
 
 import { ASSET_CLASSES, ASSET_TYPES, findHolding } from './settings.js';
-import { knownEntries, rateTable, aggregateByMonth, monthKeysOf } from './balance-sheet.js';
+import { knownEntries, rateTable, aggregateByMonth } from './balance-sheet.js';
 import { monthKey } from './utils.js';
 
 const DAYS_IN_YEAR = 365;
@@ -58,7 +58,6 @@ function flowsOf(byMonth, keys) {
     const months = keys.map(key => byMonth.get(key)).filter(Boolean);
 
     return {
-        any: months.length > 0,
         income: sum(months.map(m => m.income)),
         expenses: sum(months.map(m => m.expenses))
     };
@@ -192,7 +191,7 @@ export function buildFire({ transactions, balances, closedMonths, settings, toda
     }
 
     const projection = projectionRows({
-        fire, closedMonths, byMonth, valued, latestMonth, fiPortfolio, saved, nonRegShare, withdrawal, fiNumber,
+        fire, closedMonths, valued, latestMonth, fiPortfolio, saved, nonRegShare, withdrawal, fiNumber,
         defaults: defaultProjectionYears({ balances, settings, today })
     });
     const fiYear = fiPortfolio >= fiNumber ? 'reached' : projection.fiYear;
@@ -206,7 +205,9 @@ export function buildFire({ transactions, balances, closedMonths, settings, toda
     };
 }
 
-function projectionRows({ fire, closedMonths, byMonth, valued, latestMonth, fiPortfolio, saved, nonRegShare, withdrawal, fiNumber, defaults }) {
+// Each row: Start, End and Change = End − Start of the FI portfolio. Finished years are what really happened;
+// open and projected years add growth after inflation and the yearly saving, minus the tax drag.
+function projectionRows({ fire, closedMonths, valued, latestMonth, fiPortfolio, saved, nonRegShare, withdrawal, fiNumber, defaults }) {
     const start = fire.projectionStart ?? defaults.start;
     const end = fire.projectionEnd ?? defaults.end;
     const closed = new Set(closedMonths);
@@ -224,7 +225,8 @@ function projectionRows({ fire, closedMonths, byMonth, valued, latestMonth, fiPo
     let fiFound = fiPortfolio >= fiNumber;
 
     const row = (year, kind, values) => {
-        const fi = !fiFound && kind !== 'actual' && kind !== 'none' && values.end >= fiNumber;
+        const { start: startValue = null, end: endValue = null, taxDrag = null } = values;
+        const fi = !fiFound && kind !== 'actual' && kind !== 'none' && endValue >= fiNumber;
 
         if (fi) {
             fiFound = true;
@@ -232,9 +234,14 @@ function projectionRows({ fire, closedMonths, byMonth, valued, latestMonth, fiPo
         }
 
         return {
-            year, kind, age: ageOf(year), start: null, growth: null, taxDrag: null, saved: null, end: null,
-            ...values,
-            swr: values.end ? withdrawal / values.end : null,
+            year,
+            kind,
+            age: ageOf(year),
+            start: startValue,
+            change: startValue !== null && endValue !== null ? endValue - startValue : null,
+            taxDrag,
+            end: endValue,
+            swr: endValue ? withdrawal / endValue : null,
             fi
         };
     };
@@ -243,9 +250,8 @@ function projectionRows({ fire, closedMonths, byMonth, valued, latestMonth, fiPo
         const fraction = months / 12;
         const growth = startValue * growthRate * fraction;
         const taxDrag = startValue * dragRate * fraction;
-        const yearSaved = saved * fraction;
 
-        return row(year, kind, { start: startValue, growth, taxDrag, saved: yearSaved, end: startValue + growth - taxDrag + yearSaved });
+        return row(year, kind, { start: startValue, taxDrag, end: startValue + growth - taxDrag + saved * fraction });
     };
 
     const fiPortfolioAt = key => fiPortfolioOf(valued(key));
@@ -254,11 +260,8 @@ function projectionRows({ fire, closedMonths, byMonth, valued, latestMonth, fiPo
         if (closed.has(december(year))) {
             const endValue = fiPortfolioAt(december(year));
             const startValue = closed.has(december(year - 1)) ? fiPortfolioAt(december(year - 1)) : null;
-            const flows = flowsOf(byMonth, monthKeysOf(year));
-            const yearSaved = flows.any ? flows.income - flows.expenses : null;
-            const known = [startValue, endValue, yearSaved].every(value => value !== null);
 
-            rows.push(row(year, 'actual', { start: startValue, end: endValue, saved: yearSaved, growth: known ? endValue - startValue - yearSaved : null }));
+            rows.push(row(year, 'actual', { start: startValue, end: endValue }));
         } else if (year < latestYear) {
             rows.push(row(year, 'none', {}));
         }

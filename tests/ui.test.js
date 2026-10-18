@@ -1,10 +1,11 @@
 import { describe, it, expect, vi } from 'vitest';
-import { sortTransactions, renderTransactions, updateSummary, handleDateRangeChange, applyCustomDateFilter, handleSort, updateSortIcons } from '../js/ui.js';
+import { sortTransactions, renderTransactions, updateSummary, handleDateRangeChange, applyCustomDateFilter, handleSort, updateSortIcons, handleYearFilterChange } from '../js/ui.js';
 import { transactions, currentSort, currentFilter, settings } from '../js/state.js';
 import {
     transactionsBody, selectAllCheckbox, totalIncomeElement,
     totalExpensesElement, netAmountElement, dateRangeSelect,
-    customDateContainer, startDateInput, endDateInput
+    customDateContainer, startDateInput, endDateInput,
+    yearFilterContainer, yearFilterSelect
 } from '../js/dom.js';
 
 describe('sortTransactions', () => {
@@ -388,6 +389,150 @@ describe('handleDateRangeChange', () => {
     it('hides custom container for non-custom selections', () => {
         dateRangeSelect.value = 'all';
         handleDateRangeChange();
+        expect(customDateContainer.style.display).toBe('none');
+    });
+});
+
+describe('year filter', () => {
+    const makeTxn = (date, description = 'Test') => ({
+        date, description, amount: 50, type: 'expense', category: 'Casa', account: 'Amex'
+    });
+    const optionValues = () => [...yearFilterSelect.options].map(option => option.value);
+    const shownDescriptions = () => [...transactionsBody.querySelectorAll('tr')].map(row => row.querySelector('td[data-field="description"]').textContent);
+    const chooseYearRange = () => {
+        dateRangeSelect.value = 'year';
+        handleDateRangeChange();
+    };
+
+    it('shows a year selector listing each year with transactions once, newest first', () => {
+        // Arrange
+        transactions.push(makeTxn(new Date(2016, 8, 3)), makeTxn(new Date(2024, 0, 1)), makeTxn(new Date(2024, 11, 31)), makeTxn(new Date(2019, 5, 1)));
+
+        // Act
+        chooseYearRange();
+
+        // Assert
+        expect(yearFilterContainer.style.display).toBe('flex');
+        expect(optionValues()).toEqual(['2024', '2019', '2016']);
+    });
+
+    it('filters to the newest year at first', () => {
+        // Arrange
+        transactions.push(makeTxn(new Date(2019, 5, 1)), makeTxn(new Date(2024, 5, 1)));
+
+        // Act
+        chooseYearRange();
+
+        // Assert
+        expect(yearFilterSelect.value).toBe('2024');
+        expect(currentFilter.dateRange).toBe('year');
+        expect(currentFilter.startDate).toEqual(new Date(2024, 0, 1));
+        expect(currentFilter.endDate).toEqual(new Date(2024, 11, 31));
+    });
+
+    it('shows only the chosen year, its first and last days included', () => {
+        // Arrange
+        transactions.push(
+            makeTxn(new Date(2018, 11, 31, 23, 0), 'Dec 31 before'),
+            makeTxn(new Date(2019, 0, 1), 'Jan 1'),
+            makeTxn(new Date(2019, 11, 31, 23, 0), 'Dec 31'),
+            makeTxn(new Date(2020, 0, 1), 'Jan 1 after')
+        );
+        chooseYearRange();
+        yearFilterSelect.value = '2019';
+
+        // Act
+        handleYearFilterChange();
+
+        // Assert
+        expect(shownDescriptions()).toEqual(['Jan 1', 'Dec 31']);
+    });
+
+    it('offers the current year when there are no transactions', () => {
+        // Arrange
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date(2026, 5, 1));
+
+        // Act
+        chooseYearRange();
+        vi.useRealTimers();
+
+        // Assert
+        expect(optionValues()).toEqual(['2026']);
+        expect(currentFilter.startDate).toEqual(new Date(2026, 0, 1));
+    });
+
+    it('keeps the chosen year when Select Year is picked again', () => {
+        // Arrange
+        transactions.push(makeTxn(new Date(2019, 5, 1)), makeTxn(new Date(2024, 5, 1)));
+        chooseYearRange();
+        yearFilterSelect.value = '2019';
+        handleYearFilterChange();
+        dateRangeSelect.value = 'all';
+        handleDateRangeChange();
+
+        // Act
+        chooseYearRange();
+
+        // Assert
+        expect(yearFilterSelect.value).toBe('2019');
+        expect(currentFilter.startDate).toEqual(new Date(2019, 0, 1));
+    });
+
+    it('falls back to the newest year when Select Year is picked again after the chosen year lost its transactions', () => {
+        // Arrange
+        transactions.push(makeTxn(new Date(2019, 5, 1)), makeTxn(new Date(2024, 5, 1)));
+        chooseYearRange();
+        yearFilterSelect.value = '2019';
+        handleYearFilterChange();
+        dateRangeSelect.value = 'all';
+        handleDateRangeChange();
+        transactions.splice(0, 1);
+
+        // Act
+        chooseYearRange();
+
+        // Assert
+        expect(optionValues()).toEqual(['2024']);
+        expect(currentFilter.startDate).toEqual(new Date(2024, 0, 1));
+    });
+
+    it('adds a newly imported year on redraw and keeps the chosen one, even once it has no transactions', () => {
+        // Arrange
+        transactions.push(makeTxn(new Date(2019, 5, 1)));
+        chooseYearRange();
+        transactions.length = 0;
+        transactions.push(makeTxn(new Date(2025, 5, 1)));
+
+        // Act
+        renderTransactions();
+
+        // Assert
+        expect(optionValues()).toEqual(['2025', '2019']);
+        expect(yearFilterSelect.value).toBe('2019');
+    });
+
+    it.each(['all', 'current-year', 'custom'])('hides the year selector for %s', range => {
+        // Arrange
+        chooseYearRange();
+        dateRangeSelect.value = range;
+
+        // Act
+        handleDateRangeChange();
+
+        // Assert
+        expect(yearFilterContainer.style.display).toBe('none');
+    });
+
+    it('hides the custom range inputs when Select Year is picked after Custom Range', () => {
+        // Arrange
+        dateRangeSelect.value = 'custom';
+        handleDateRangeChange();
+
+        // Act
+        chooseYearRange();
+
+        // Assert
         expect(customDateContainer.style.display).toBe('none');
     });
 });

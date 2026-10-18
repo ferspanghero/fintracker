@@ -32,11 +32,13 @@
 - [x] **U5**: `settings-ui.js` — asset detail columns and add form; read-only generated name; Hide archived toggle (on by default)
 - [x] **U6**: `settings-ui.js` — Asset classes table (holdings + Target) and FIRE assumptions form
 - [x] **U7**: `styles.css` — row kinds, FI badge, progress bar, tips (1 s hover delay, focus, Escape)
+- [x] **U8**: `ui.js` / `events.js` / `index.html` — Transactions Select Year filter and its year list
 
 ## Phase 5 — End-to-end tests
 
 - [x] **E1**: `tests/e2e/investments.spec.js` — scenarios E1–E16, E20–E23, E27
 - [x] **E2**: `tests/e2e/settings.spec.js` — scenarios E17–E19, E24–E26, E28
+- [x] **E3**: `tests/e2e/transactions.spec.js` — scenario E29
 
 ## Phase 6 — Docs
 
@@ -47,8 +49,8 @@
 
 ## Phase 7 — Milestone: history import 2017–2024 (after v4 ships)
 
-- [ ] **H1**: Settle the open concerns in plan.md Phase 7 (transactions as monthly totals or individual rows, `.xls` files, asset mapping, rates, liabilities, categories)
-- [ ] **H2**: One-off converter outside the repo: balance-sheet workbooks → assets, monthly balances, closed months
-- [ ] **H3**: Converter: expense data → transactions with categories mapped to the current list
-- [ ] **H4**: Merge onto a fresh backup of current data and settings → one version 2 backup in `resources/`; validate it with `validateBackup`
-- [ ] **H5**: Restore it and check the 2017–2024 projection rows against the old workbooks
+- [x] **H1**: Settle the open concerns in plan.md Phase 7 (transactions as monthly totals or individual rows, `.xls` files, asset mapping, rates, liabilities, categories)
+- [x] **H2**: One-off converter outside the repo: balance-sheet workbooks → assets, monthly balances, closed months
+- [x] **H3**: Converter: expense data → transactions with categories mapped to the current list
+- [x] **H4**: Merge onto a fresh backup of current data and settings → one version 2 backup in `resources/`; validate it with `validateBackup`
+- [x] **H5**: Restore it and check the 2017–2024 projection rows against the old workbooks

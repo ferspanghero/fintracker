@@ -2,7 +2,8 @@ import { transactions, currentSort, currentFilter, settings } from './state.js';
 import {
     transactionsBody, selectAllCheckbox, totalIncomeElement,
     totalExpensesElement, netAmountElement, dateRangeSelect,
-    customDateContainer, startDateInput, endDateInput
+    customDateContainer, startDateInput, endDateInput,
+    yearFilterContainer, yearFilterSelect
 } from './dom.js';
 import { dateStrInputToLocalDate, escapeHTML } from './utils.js';
 import { getFilteredTransactions, updateTransactionField, deleteTransaction } from './transactions.js';
@@ -11,6 +12,11 @@ import { INCOME, EXPENSE } from './constants.js';
 
 // Render transactions
 export function renderTransactions() {
+    // An import or restore can bring a new year to choose from
+    if (currentFilter.dateRange === 'year') {
+        populateYearFilter({ keepEmptyChosen: true });
+    }
+
     // Clear table
     transactionsBody.innerHTML = '';
 
@@ -156,12 +162,11 @@ export function updateSummary() {
 export function handleDateRangeChange() {
     const selectedRange = dateRangeSelect.value;
 
-    // Show/hide custom date range inputs
-    if (selectedRange === 'custom') {
-        customDateContainer.style.display = 'flex';
-    } else {
-        customDateContainer.style.display = 'none';
+    // Show/hide custom date range inputs and the year selector
+    customDateContainer.style.display = selectedRange === 'custom' ? 'flex' : 'none';
+    yearFilterContainer.style.display = selectedRange === 'year' ? 'flex' : 'none';
 
+    if (selectedRange !== 'custom') {
         // Apply the selected date range
         currentFilter.dateRange = selectedRange;
         currentFilter.startDate = null;
@@ -193,6 +198,10 @@ export function handleDateRangeChange() {
                 currentFilter.startDate = new Date(currentYear - 1, 0, 1);
                 currentFilter.endDate = new Date(currentYear - 1, 11, 31);
                 break;
+            case 'year':
+                populateYearFilter({ keepEmptyChosen: false });
+                setYearRange();
+                break;
             case 'all':
                 // No date filters
                 break;
@@ -202,6 +211,47 @@ export function handleDateRangeChange() {
         renderTransactions();
         updateSummary();
     }
+}
+
+// Years with transactions, newest first; none at all offers this year. On redraws the chosen year
+// stays listed and chosen even once it has none, so the filter never switches on its own; picking
+// Select Year again falls back to the newest year instead.
+function populateYearFilter({ keepEmptyChosen }) {
+    const chosen = Number(yearFilterSelect.value);
+    const withTransactions = new Set(transactions.map(transaction => transaction.date.getFullYear()));
+    const keepChosen = Boolean(chosen) && (keepEmptyChosen || withTransactions.has(chosen));
+    const years = new Set(withTransactions);
+
+    if (keepChosen) {
+        years.add(chosen);
+    }
+
+    if (!years.size) {
+        years.add(new Date().getFullYear());
+    }
+
+    const sorted = [...years].sort((a, b) => b - a);
+
+    // Rewritten only when the list changes, so a focused selector isn't re-announced on every redraw
+    if ([...yearFilterSelect.options].map(option => option.value).join() !== sorted.join()) {
+        yearFilterSelect.innerHTML = sorted.map(year => `<option value="${year}">${year}</option>`).join('');
+    }
+
+    yearFilterSelect.value = String(keepChosen ? chosen : sorted[0]);
+}
+
+function setYearRange() {
+    const year = Number(yearFilterSelect.value);
+
+    currentFilter.startDate = new Date(year, 0, 1);
+    currentFilter.endDate = new Date(year, 11, 31);
+}
+
+// Apply the year chosen in the year selector
+export function handleYearFilterChange() {
+    setYearRange();
+    renderTransactions();
+    updateSummary();
 }
 
 // Apply custom date filter

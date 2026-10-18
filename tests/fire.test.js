@@ -219,10 +219,10 @@ describe('buildFire — projection', () => {
         expect(open.kind).toBe('open');
         expect(open.age).toBe(36);
         expect(open.start).toBe(1200000);
-        expect(open.growth).toBeCloseTo(1200000 * R * 0.25);
         expect(open.taxDrag).toBeCloseTo(1200000 * (0.07 * 0.1 / 1.02) * 0.25);
-        expect(open.saved).toBeCloseTo(15000);
+        expect(open.end).toBeCloseTo(1200000 + 1200000 * R * 0.25 - open.taxDrag + 15000);
         expect(open.end).toBeCloseTo(1227647.06, 1);
+        expect(open.change).toBeCloseTo(open.end - 1200000);
         expect(open.swr).toBeCloseTo(75000 / 1227647.06);
     });
 
@@ -232,7 +232,8 @@ describe('buildFire — projection', () => {
 
         // Assert
         expect(fire.projection.map(row => row.year)).toEqual([2026, 2027, 2028, 2029, 2030, 2031, 2032, 2033]);
-        expect(rowFor(fire, 2027)).toMatchObject({ kind: 'projected', start: rowFor(fire, 2026).end, saved: 60000 });
+        expect(rowFor(fire, 2027)).toMatchObject({ kind: 'projected', start: rowFor(fire, 2026).end });
+        expect(rowFor(fire, 2027).change).toBeCloseTo(rowFor(fire, 2027).start * R - rowFor(fire, 2027).taxDrag + 60000);
         expect(rowFor(fire, 2027).end).toBeCloseTo(1339400.81, 1);
         expect(rowFor(fire, 2031).end).toBeCloseTo(1835555.98, 1);
         expect(rowFor(fire, 2032).end).toBeCloseTo(1972937.26, 1);
@@ -256,7 +257,7 @@ describe('buildFire — projection', () => {
         expect(fire.projection.some(row => row.fi)).toBe(false);
     });
 
-    it('shows closed Decembers as actual years with what was saved and what the market added', () => {
+    it('shows closed Decembers as actual years with how much the FI portfolio changed', () => {
         // Arrange
         const input = projectionInput();
         input.settings.fire.projectionStart = 2023;
@@ -268,11 +269,9 @@ describe('buildFire — projection', () => {
         const fire = buildFire(input);
 
         // Assert
-        expect(rowFor(fire, 2023)).toEqual({ year: 2023, kind: 'none', age: 33, start: null, growth: null, taxDrag: null, saved: null, end: null, swr: null, fi: false });
-        expect(rowFor(fire, 2024)).toMatchObject({ kind: 'actual', start: null, end: 800000, saved: null, growth: null, taxDrag: null });
-        expect(rowFor(fire, 2025)).toMatchObject({ kind: 'actual', start: 800000, end: 1000000, taxDrag: null });
-        expect(rowFor(fire, 2025).saved).toBe(30000 + 3 * 5000);
-        expect(rowFor(fire, 2025).growth).toBe(1000000 - 800000 - 45000);
+        expect(rowFor(fire, 2023)).toEqual({ year: 2023, kind: 'none', age: 33, start: null, change: null, taxDrag: null, end: null, swr: null, fi: false });
+        expect(rowFor(fire, 2024)).toMatchObject({ kind: 'actual', start: null, end: 800000, change: null, taxDrag: null });
+        expect(rowFor(fire, 2025)).toMatchObject({ kind: 'actual', start: 800000, end: 1000000, change: 200000, taxDrag: null });
         expect(rowFor(fire, 2025).swr).toBeCloseTo(75000 / 1000000);
     });
 
@@ -289,8 +288,8 @@ describe('buildFire — projection', () => {
 
         // Assert
         expect(rowFor(fire, 2025)).toMatchObject({ kind: 'actual', end: 1200000 });
-        expect(rowFor(fire, 2026)).toMatchObject({ kind: 'projected', start: 1200000, saved: 60000 });
-        expect(rowFor(fire, 2026).growth).toBeCloseTo(1200000 * R);
+        expect(rowFor(fire, 2026)).toMatchObject({ kind: 'projected', start: 1200000 });
+        expect(rowFor(fire, 2026).change).toBeCloseTo(1200000 * R - rowFor(fire, 2026).taxDrag + 60000);
     });
 
     it('keeps an open December with nothing left to project', () => {
@@ -303,7 +302,7 @@ describe('buildFire — projection', () => {
         const open = rowFor(buildFire(input), 2025);
 
         // Assert
-        expect(open).toMatchObject({ kind: 'open', start: 1200000, growth: 0, taxDrag: 0, saved: 0, end: 1200000 });
+        expect(open).toMatchObject({ kind: 'open', start: 1200000, change: 0, taxDrag: 0, end: 1200000 });
     });
 
     it('still projects from the latest month when the projection starts later', () => {

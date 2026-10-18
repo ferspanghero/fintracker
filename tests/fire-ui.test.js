@@ -248,7 +248,7 @@ describe('Investments & FIRE UI', () => {
 
         // Assert
         expect(projectionRow(2024).className).toBe('none');
-        expect(cells(projectionRow(2024)).slice(2)).toEqual(['—', '—', '—', '—', '—', '—']);
+        expect(cells(projectionRow(2024)).slice(2)).toEqual(['—', '—', '—', '—', '—']);
         expect(projectionRow(2025).className).toBe('actual');
         expect(projectionRow(2025).cells[0].querySelector('.state').textContent).toBe('Actual');
         expect(cells(projectionRow(2025))[4]).toBe('—');
@@ -256,12 +256,14 @@ describe('Investments & FIRE UI', () => {
         expect(projectionRow(2026).cells[2].textContent).toBe('$1,200,000 Sep');
         expect(projectionRow(2027).className).toBe('projected');
         expect(projectionRow(2027).cells[4].textContent).toMatch(/^-\$[\d,]+$/);
+        expect(projectionRow(2027).cells[3].textContent).toMatch(/^\+\$[\d,]+$/);
         expect(projectionRow(2032).classList.contains('fi')).toBe(false);
         expect(fireProjection.querySelectorAll('.fi-badge')).toHaveLength(1);
         expect(fireProjection.querySelector('.fi-badge').closest('tr').dataset.year).toBe('2032');
         expect(projectionRow(2032).cells[1].textContent).toBe('42');
         expect(fireProjectionHint.querySelectorAll('.tip')).toHaveLength(3);
-        expect(fireProjection.querySelectorAll('thead .tip')).toHaveLength(8);
+        expect(Array.from(fireProjection.querySelectorAll('thead th')).map(label)).toEqual(['Year', 'Age', 'Start', 'Change', 'Tax drag', 'End', 'SWR']);
+        expect(fireProjection.querySelectorAll('thead .tip')).toHaveLength(7);
     });
 
     it('shows allocation against targets with buy and sell amounts', () => {
@@ -281,6 +283,37 @@ describe('Investments & FIRE UI', () => {
         expect(cells(allocationRow('Intl Equity')).slice(1, 6)).toEqual(['$0', '—', '—', '—', '—']);
         expect(allocationRow('Canada Equity').querySelector('.alloc-mark').style.left).toBe('30%');
         expect(allocationRow('Unclassified')).toBeUndefined();
+    });
+
+    it.each([
+        ['nothing left to project in an open December', { '2025-12': { eq: 1200000 } }, [], '$0'],
+        ['a finished year that fell', { '2024-12': { eq: 1300000 }, '2025-12': { eq: 1200000 } }, ['2024-12', '2025-12'], '-$100,000'],
+        ['a change that rounds to nothing', { '2024-12': { eq: 1200000.4 }, '2025-12': { eq: 1200000 } }, ['2024-12', '2025-12'], '$0']
+    ])('shows the change for %s without a misleading sign', (_, months, closed, text) => {
+        // Arrange
+        seed();
+        delete balances['2026-09'];
+        Object.assign(balances, months);
+        closedMonths.push(...closed);
+
+        // Act
+        renderFire();
+
+        // Assert
+        expect(projectionRow(2025).cells[3].textContent).toBe(text);
+    });
+
+    it('says a class is on target when it holds exactly its share', () => {
+        // Arrange
+        seed();
+        setHoldingSplit(settings, 'ETF2', { canadaEquity: 100 });
+        setTargets(settings, { canadaEquity: 24, usEquity: 72, cash: 4 });
+
+        // Act
+        renderFire();
+
+        // Assert
+        expect(cells(allocationRow('Canada Equity')).slice(4, 6)).toEqual(['0.0%', 'on target']);
     });
 
     it('shows an Unclassified row and a warning for assets without a split, and no targets as dashes', () => {
@@ -482,7 +515,8 @@ describe('Investments & FIRE UI', () => {
         expect(text).toContain('Non-reg share50% (computed)');
         expect(text).toContain('Birth year1990');
         expect(text).toContain('Projection years2025–2033');
-        expect(fireAssumptions.querySelectorAll('.tip')).toHaveLength(9);
+        expect(text).toContain('Yearly saving$60,000 (last 12 months, computed)');
+        expect(fireAssumptions.querySelectorAll('.tip')).toHaveLength(10);
     });
 
     it('describes automatic projection years', () => {

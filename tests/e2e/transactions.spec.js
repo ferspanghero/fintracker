@@ -158,3 +158,37 @@ test('E29 — re-importing an export adds only the categories of rows it keeps',
     expect(categories.income).not.toContain('Transfers');
 });
 
+test('v4 E29 — Select Year shows a year selector and filters to the chosen year', async ({ page }) => {
+    // Arrange
+    await openApp(page, {
+        transactions: [
+            tx('2024-03-01', 'Older rent', 100, 'expense', 'Casa'),
+            tx('2025-01-01', 'New year rent', 200, 'expense', 'Casa'),
+            tx('2025-12-31', 'Year end pay', 1000, 'income', 'Trabalho')
+        ]
+    });
+    const descriptions = page.locator('#transactions-body td[data-field="description"]');
+
+    // Act
+    await page.locator('#date-range').selectOption('year');
+
+    // Assert
+    await expect(page.locator('#year-filter')).toBeVisible();
+    await expect(page.locator('#year-filter option')).toHaveText(['2025', '2024']);
+    await expect(descriptions).toHaveText(['New year rent', 'Year end pay']);
+    await expect(page.locator('#total-expenses')).toHaveText('$200.00');
+
+    // Act
+    await page.locator('#year-filter').selectOption('2024');
+
+    // Assert
+    await expect(descriptions).toHaveText(['Older rent']);
+    await expect(page.locator('#total-income')).toHaveText('$0.00');
+
+    // Act
+    await page.locator('#date-range').selectOption('all');
+
+    // Assert
+    await expect(page.locator('#year-filter')).toBeHidden();
+    await expect(descriptions).toHaveCount(3);
+});
