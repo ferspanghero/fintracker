@@ -120,6 +120,32 @@ describe('categorizeTransaction', () => {
 });
 
 describe('populateCategoryDropdowns', () => {
+    it('keeps the category the list is filtered on when it rebuilds the options', () => {
+        // Arrange
+        populateCategoryDropdowns();
+        currentFilter.category = 'Casa';
+        categorySelect.value = 'Casa';
+
+        // Act
+        populateCategoryDropdowns();
+
+        // Assert
+        expect(categorySelect.value).toBe('Casa');
+        expect(currentFilter.category).toBe('Casa');
+    });
+
+    it('goes back to all categories when the filtered one no longer exists', () => {
+        // Arrange
+        currentFilter.category = 'Removed';
+
+        // Act
+        populateCategoryDropdowns();
+
+        // Assert
+        expect(categorySelect.value).toBe('all');
+        expect(currentFilter.category).toBe('all');
+    });
+
     it('populates categorySelect with optgroups', () => {
         populateCategoryDropdowns();
         const optgroups = categorySelect.querySelectorAll('optgroup');

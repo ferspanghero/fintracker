@@ -70,6 +70,11 @@ export function populateCategoryDropdowns() {
     });
 
     categorySelect.appendChild(incomeOptgroup);
+
+    // Rebuilding the options resets the selection; keep the active filter, or drop it if its category is gone.
+    const listed = [...settings.categories.expense, ...settings.categories.income].includes(currentFilter.category);
+    currentFilter.category = listed ? currentFilter.category : 'all';
+    categorySelect.value = currentFilter.category;
 }
 
 // Populate transaction category select

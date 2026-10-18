@@ -62,7 +62,7 @@ Persist + Re-render (storage.js → ui.js)
 - `import-export.js` — CSV import pipeline (files read one at a time → parser registry → auto-categorization → ignore list → duplicate detection → state push) and CSV export.
 - `transactions.js` — CRUD, filtering, and `saveAndRefresh()` helper that persists to localStorage then re-renders.
 - `events.js` — wires all DOM event listeners.
-- `main.js` — bootstrap: sets defaults, loads localStorage, populates dropdowns, attaches listeners, wires the tabs. The Balance Sheet, Investments & FIRE and Settings tabs re-render when they open.
+- `main.js` — bootstrap: sets defaults, loads localStorage, populates dropdowns, attaches listeners, wires the tabs. The Balance Sheet, Investments & FIRE and Settings tabs re-render when they open; a Settings change the Transactions tab shows (categories, restore) only marks it out of date, and it redraws when its tab opens.
 
 **Persistence** (`storage.js`) — the only localStorage reader/writer. Keys: `transactions`, `settings`, `balances`, `closedMonths`, `registeredRoom`. Settings pass through `migrateSettings` as they load. Dates are stored as ISO strings and rehydrated to `Date` objects on load. Missing keys load as a fresh install; loading never writes. `saveData()` writes every key; `saveBalanceSheet()` writes only `balances` and `closedMonths`, which is all the Balance Sheet grid changes; `saveRegisteredRoom()` writes only `registeredRoom`. All report whether the save succeeded.
 

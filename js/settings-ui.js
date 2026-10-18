@@ -28,7 +28,8 @@ import { INCOME, EXPENSE } from './constants.js';
 
 const MAX_LISTED_ERRORS = 10;
 
-let notifyDataChanged = () => {};
+// Called after a change the Transactions tab shows: the category list, or everything after a restore.
+let notifyTransactionsView = () => {};
 let pendingRestore = null;
 
 function rateNoteText() {
@@ -202,7 +203,6 @@ export function renderSettings() {
 function commit() {
     saveData();
     renderSettings();
-    notifyDataChanged();
 }
 
 function handleRateChange(currency, input) {
@@ -250,6 +250,7 @@ function handleChipClick(event) {
 
     if (result.ok) {
         commit();
+        notifyTransactionsView();
     }
 }
 
@@ -260,6 +261,7 @@ function handleAddCategory() {
     if (result.ok) {
         settingsNewCategoryInput.value = '';
         commit();
+        notifyTransactionsView();
     }
 }
 
@@ -310,7 +312,6 @@ function handleDetailChange(row, id) {
     name.readOnly = Boolean(asset.type);
     saveData();
     renderClasses();
-    notifyDataChanged();
 }
 
 const archivedBox = id => Array.from(assetsBody.querySelectorAll('tr[data-id]'))
@@ -388,7 +389,6 @@ function handleShareChange(event) {
 
     if (result.ok) {
         saveData();
-        notifyDataChanged();
     }
 }
 
@@ -411,7 +411,6 @@ function handleFireInputChange(event) {
     }
 
     saveData();
-    notifyDataChanged();
 }
 
 function downloadBackup() {
@@ -480,7 +479,7 @@ function confirmRestore() {
     closeModal(restoreModal);
     const saved = saveData();
     renderSettings();
-    notifyDataChanged();
+    notifyTransactionsView();
 
     if (!saved) {
         backupMessage.textContent = "The backup was loaded but couldn't be saved. Free up browser storage and restore again.";
@@ -494,10 +493,11 @@ function confirmRestore() {
 
 /**
  * Wires the Settings tab; call once after the DOM is ready.
- * @param {{onDataChanged: Function}} options called after any change other views must reflect
+ * @param {{onTransactionsViewChanged: Function}} options called after a change the Transactions tab shows
+ *        (the category list, or a restore); other tabs re-read Settings when they open
  */
-export function initSettings({ onDataChanged }) {
-    notifyDataChanged = onDataChanged;
+export function initSettings({ onTransactionsViewChanged }) {
+    notifyTransactionsView = onTransactionsViewChanged;
     rateUsdInput.addEventListener('change', () => handleRateChange('USD', rateUsdInput));
     rateBrlInput.addEventListener('change', () => handleRateChange('BRL', rateBrlInput));
     refreshRatesBtn.addEventListener('click', handleRefreshRates);

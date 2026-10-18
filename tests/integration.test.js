@@ -301,22 +301,114 @@ describe('Integration: full init cycle', () => {
         expect(rows.length).toBe(0);
     });
 
-    it('re-renders the Balance Sheet when its tab opens and refreshes dropdowns after Settings changes', () => {
+    it('re-renders the Balance Sheet when its tab opens', () => {
         // Arrange
         localStorage.setItem('settings', JSON.stringify({ ...emptySettings(), assets: [{ id: 'a', name: 'Savings', currency: 'CAD', archived: false }] }));
         init();
 
         // Act
         document.getElementById('tab-balance-sheet').click();
-        const gridText = document.getElementById('bs-grid').textContent;
+
+        // Assert
+        expect(document.getElementById('bs-grid').textContent).toContain('Savings');
+    });
+
+    it('lists a category added in Settings once Transactions is opened', () => {
+        // Arrange
+        init();
         document.getElementById('tab-settings').click();
         document.getElementById('settings-new-category').value = 'Pets';
         document.getElementById('add-category-btn').click();
 
+        // Act
+        document.getElementById('tab-transactions').click();
+
         // Assert
-        expect(gridText).toContain('Savings');
-        expect(document.getElementById('panel-settings').hidden).toBe(false);
         expect(Array.from(document.getElementById('category-select').options).map(o => o.value)).toContain('Pets');
+    });
+
+    it('leaves the hidden Transactions table alone while Settings change, and redraws it when it is opened', () => {
+        // Arrange
+        localStorage.setItem('transactions', JSON.stringify([
+            { date: new Date(2025, 3, 12).toISOString(), description: 'Saved', amount: 50, type: 'expense', category: 'Casa', account: 'Amex' }
+        ]));
+        localStorage.setItem('settings', JSON.stringify({ ...emptySettings(), categories: SAMPLE_CATEGORIES }));
+        init();
+        const rowBefore = transactionsBody.querySelector('tr');
+        document.getElementById('tab-settings').click();
+
+        // Act
+        document.getElementById('settings-new-category').value = 'Pets';
+        document.getElementById('add-category-btn').click();
+        const untouched = transactionsBody.querySelector('tr') === rowBefore;
+        document.getElementById('tab-transactions').click();
+
+        // Assert
+        expect(untouched).toBe(true);
+        expect(transactionsBody.querySelector('tr')).not.toBe(rowBefore);
+        expect(transactionsBody.querySelectorAll('tr')).toHaveLength(1);
+    });
+
+    it('does not redraw the Transactions table after a Settings change it does not show', () => {
+        // Arrange
+        localStorage.setItem('transactions', JSON.stringify([
+            { date: new Date(2025, 3, 12).toISOString(), description: 'Saved', amount: 50, type: 'expense', category: 'Casa', account: 'Amex' }
+        ]));
+        localStorage.setItem('settings', JSON.stringify({ ...emptySettings(), categories: SAMPLE_CATEGORIES }));
+        init();
+        const rowBefore = transactionsBody.querySelector('tr');
+        document.getElementById('tab-settings').click();
+        const swr = document.querySelector('[data-fire="swr"]');
+        swr.value = '3.5';
+        swr.dispatchEvent(new Event('change', { bubbles: true }));
+
+        // Act
+        document.getElementById('tab-transactions').click();
+
+        // Assert
+        expect(transactionsBody.querySelector('tr')).toBe(rowBefore);
+    });
+
+    it('shows restored transactions once Transactions is opened after a restore', async () => {
+        // Arrange
+        const { buildBackup } = await import('../js/backup.js');
+        const { restoreModal, restoreFileInput } = await import('../js/dom.js');
+        init();
+        const settingsAfter = { ...emptySettings(), categories: SAMPLE_CATEGORIES };
+        const file = JSON.stringify(buildBackup({
+            settings: settingsAfter,
+            transactions: [{ date: new Date(2025, 3, 12), description: 'Restored', amount: 7, type: 'expense', category: 'Casa', account: 'Amex' }],
+            balances: {}, closedMonths: [], registeredRoom: []
+        }, new Date()));
+        document.getElementById('tab-settings').click();
+        Object.defineProperty(restoreFileInput, 'files', { value: [new File([file], 'b.json')], configurable: true });
+        restoreFileInput.dispatchEvent(new Event('change'));
+        await vi.waitFor(() => expect(restoreModal.style.display).toBe('block'));
+        document.getElementById('restore-confirm-btn').click();
+
+        // Act
+        document.getElementById('tab-transactions').click();
+
+        // Assert
+        expect(Array.from(transactionsBody.querySelectorAll('tr')).map(tr => tr.textContent)).toEqual([expect.stringContaining('Restored')]);
+        expect(document.getElementById('total-expenses').textContent).toContain('7.00');
+    });
+
+    it('does not redraw the Transactions table when it is opened with nothing changed', () => {
+        // Arrange
+        localStorage.setItem('transactions', JSON.stringify([
+            { date: new Date(2025, 3, 12).toISOString(), description: 'Saved', amount: 50, type: 'expense', category: 'Casa', account: 'Amex' }
+        ]));
+        localStorage.setItem('settings', JSON.stringify({ ...emptySettings(), categories: SAMPLE_CATEGORIES }));
+        init();
+        const rowBefore = transactionsBody.querySelector('tr');
+
+        // Act
+        document.getElementById('tab-settings').click();
+        document.getElementById('tab-transactions').click();
+
+        // Assert
+        expect(transactionsBody.querySelector('tr')).toBe(rowBefore);
     });
 
     it('defaults to date ascending sort', () => {

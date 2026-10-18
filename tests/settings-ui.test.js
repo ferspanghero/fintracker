@@ -22,11 +22,11 @@ const change = (element, value) => {
 const flush = () => new Promise(resolve => setTimeout(resolve, 0));
 
 describe('settings UI', () => {
-    let onDataChanged;
+    let onTransactionsViewChanged;
 
     beforeEach(() => {
-        onDataChanged = vi.fn();
-        initSettings({ onDataChanged });
+        onTransactionsViewChanged = vi.fn();
+        initSettings({ onTransactionsViewChanged });
         renderSettings();
     });
 
@@ -56,7 +56,7 @@ describe('settings UI', () => {
             expect(settings.rates.date).toBeNull();
             expect(rateNote.textContent).toBe('Entered manually.');
             expect(JSON.parse(localStorage.getItem('settings')).rates.USD).toBe(1.45);
-            expect(onDataChanged).toHaveBeenCalled();
+            expect(onTransactionsViewChanged).not.toHaveBeenCalled();
         });
 
         it('rejects an invalid rate and restores the field', () => {
@@ -140,7 +140,7 @@ describe('settings UI', () => {
             expect(settings.categories.expense).not.toContain('Mercado');
             expect(chip('Mercado')).toBeUndefined();
             expect(JSON.parse(localStorage.getItem('settings')).categories.expense).not.toContain('Mercado');
-            expect(onDataChanged).toHaveBeenCalled();
+            expect(onTransactionsViewChanged).toHaveBeenCalled();
         });
 
         it('adds a category of the chosen type', () => {
@@ -291,7 +291,7 @@ describe('settings UI', () => {
             expect(settings.assets[0]).toMatchObject({ name: 'RRSP Broker - Alex - ETF1', type: null, institution: 'Broker', owner: 'Alex', holding: 'ETF1' });
             expect(name.readOnly).toBe(false);
             expect(JSON.parse(localStorage.getItem('settings')).assets[0].holding).toBe('ETF1');
-            expect(onDataChanged).toHaveBeenCalled();
+            expect(onTransactionsViewChanged).not.toHaveBeenCalled();
             expect(Array.from(classesTable.querySelectorAll('tbody th')).map(th => th.textContent)).toEqual(['ETF1', 'Target']);
         });
 
@@ -542,7 +542,7 @@ describe('settings UI', () => {
             expect(total('<Cash>').classList.contains('bad')).toBe(false);
             expect(classesMessage.textContent).toBe('');
             expect(JSON.parse(localStorage.getItem('settings')).holdings).toHaveLength(2);
-            expect(onDataChanged).toHaveBeenCalled();
+            expect(onTransactionsViewChanged).not.toHaveBeenCalled();
         });
 
         it('clears a split when its row is emptied', () => {
@@ -652,7 +652,7 @@ describe('settings UI', () => {
             expect(input('swr')).toBe(swr);
             expect(JSON.parse(localStorage.getItem('settings')).fire.swr).toBe(3.5);
             expect(fireInputMessage.textContent).toBe('');
-            expect(onDataChanged).toHaveBeenCalled();
+            expect(onTransactionsViewChanged).not.toHaveBeenCalled();
         });
 
         it('shows a stored override with thousands separators', () => {
@@ -797,7 +797,7 @@ describe('settings UI', () => {
             expect(localStorage.getItem('categories')).toBeNull();
             expect(restoreModal.style.display).toBe('none');
             expect(backupMessage.textContent).toBe('Backup restored.');
-            expect(onDataChanged).toHaveBeenCalled();
+            expect(onTransactionsViewChanged).toHaveBeenCalled();
         });
 
         it('says so when the restored data cannot be saved and keeps the legacy key', async () => {

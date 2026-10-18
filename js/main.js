@@ -10,15 +10,25 @@ import { initSettings, renderSettings } from './settings-ui.js';
 import { initFire, renderFire } from './fire-ui.js';
 import { initTips } from './explanations.js';
 
-// Settings changes (categories, restore) reach the Transactions view right away;
-// the Balance Sheet, Investments & FIRE and Settings re-render whenever their tab is opened.
+// The Balance Sheet, Investments & FIRE and Settings re-render whenever their tab is opened.
+// Settings changes the Transactions tab shows (categories, restore) only mark it out of date: they
+// happen while it is hidden, and redrawing its table is the costliest thing the app does, so it waits
+// until the tab is opened. Other Settings changes leave it alone.
+let transactionsStale = false;
+
 function refreshTransactionsView() {
     populateCategoryDropdowns();
     renderTransactions();
     updateSummary();
+    transactionsStale = false;
 }
 
 const TAB_RENDERERS = {
+    'tab-transactions': () => {
+        if (transactionsStale) {
+            refreshTransactionsView();
+        }
+    },
     'tab-balance-sheet': renderBalanceSheet,
     'tab-fire': renderFire,
     'tab-settings': renderSettings
@@ -47,8 +57,9 @@ export function init() {
     initBalanceSheet();
     initFire();
     initTips();
-    initSettings({ onDataChanged: refreshTransactionsView });
-    initTabs({ onActivate: tabId => TAB_RENDERERS[tabId]?.() });
+    transactionsStale = false;
+    initSettings({ onTransactionsViewChanged: () => { transactionsStale = true; } });
+    initTabs({ onActivate: tabId => TAB_RENDERERS[tabId]() });
 }
 
 // Why this branch instead of a plain `addEventListener('DOMContentLoaded', init)`:
