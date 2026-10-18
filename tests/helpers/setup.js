@@ -21,7 +21,8 @@ beforeEach(() => {
         transactions: [],
         settings: { ...emptySettings(), categories: structuredClone(SAMPLE_CATEGORIES) },
         balances: {},
-        closedMonths: []
+        closedMonths: [],
+        registeredRoom: []
     });
     Object.assign(currentSort, { field: 'date', direction: 'asc' });
     Object.assign(currentFilter, { dateRange: 'all', startDate: null, endDate: null, category: 'all', textFilter: '' });

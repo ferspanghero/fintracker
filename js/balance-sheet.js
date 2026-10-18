@@ -23,16 +23,18 @@ export function previousMonthKey(key) {
     return monthKey(new Date(year, month - 2, 1));
 }
 
-const monthKeysOf = year => Array.from({ length: 12 }, (_, i) => `${year}-${String(i + 1).padStart(2, '0')}`);
+/** @returns {string[]} the 12 month keys of `year` */
+export const monthKeysOf = year => Array.from({ length: 12 }, (_, i) => `${year}-${String(i + 1).padStart(2, '0')}`);
 const sum = values => values.reduce((total, v) => total + (v ?? 0), 0);
 const mean = values => (values.length ? sum(values) / values.length : null);
 
-// Balance entries for assets that exist in settings (unknown ids are ignored).
-function knownEntries(balances, key, assetsById) {
+/** Balance entries [assetId, value] of month `key` for assets that exist in settings (unknown ids are ignored). */
+export function knownEntries(balances, key, assetsById) {
     return Object.entries(balances[key] ?? {}).filter(([id]) => assetsById.has(id));
 }
 
-function rateTable(settings) {
+/** @returns {object} currency → CAD rate (CAD is 1; a missing rate is null) */
+export function rateTable(settings) {
     return Object.fromEntries([[BASE_CURRENCY, 1], ...RATE_CURRENCIES.map(currency => [currency, settings.rates[currency]])]);
 }
 
@@ -61,8 +63,8 @@ function netWorthOf(balances, key, assetsById, rates, missing) {
     return total;
 }
 
-// Per-month transaction sums: key → { income, expenses, byCategory: Map(category → expense sum) }.
-function aggregateByMonth(transactions) {
+/** Per-month transaction sums: key → { income, expenses, byCategory: Map(category → expense sum) }. */
+export function aggregateByMonth(transactions) {
     const months = new Map();
 
     transactions.forEach(({ date, amount, type, category }) => {

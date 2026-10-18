@@ -1,10 +1,10 @@
 # FinTracker
 
-Personal finance tracker that imports bank CSVs, auto-categorizes transactions, and builds a monthly balance sheet from your transactions and the asset balances you enter. All data stays in your browser via LocalStorage.
+Personal finance tracker that imports bank CSVs, auto-categorizes transactions, builds a monthly balance sheet from your transactions and the asset balances you enter, and tracks your investments and progress toward financial independence (FI). All data stays in your browser via LocalStorage.
 
 ## Features
 
-The page has three tabs: **Transactions**, **Balance Sheet**, and **Settings**.
+The page has four tabs: **Transactions**, **Balance Sheet**, **Investments & FIRE**, and **Settings**.
 
 - **Multi-bank CSV import** with automatic format detection and a per-month summary of what was added
 - **Auto-categorization** of transactions based on description keywords
@@ -17,7 +17,8 @@ The page has three tabs: **Transactions**, **Balance Sheet**, and **Settings**.
 - Import ignore list for transfers between your own accounts (e.g. card payments), with optional private entries in the gitignored personal keywords file
 - **Balance Sheet** per year: month-end asset balances (entered by hand in a spreadsheet-style grid — arrow keys, type to edit, Delete to clear — each in its asset's currency), net worth in CAD, income and one row per expense category, averages over closed months compared with the previous year, and yearly indicators (net worth change, saving rate, investment returns)
 - **Close / Reopen** a Balance Sheet month to mark it reviewed and count it in the averages; imports are never affected
-- **Settings**: USD → CAD and BRL → CAD rates (editable, or refreshed from the Bank of Canada), the single category list used everywhere, and asset definitions (assets are archived, never deleted)
+- **Investments & FIRE**, built from the latest balances and the last 12 months of transactions: FI portfolio, FI number (spending grossed up for withdrawal tax ÷ your safe withdrawal rate), SWR today, freedom days and freedom calendar, a yearly projection to the FI year (closed Decembers as actual years, later years in today's dollars with a deliberately conservative tax drag on non-registered growth), allocation drift against target per asset class, holdings, and RRSP / TFSA room per person and year with over-contribution warnings. Every term has a hover explanation.
+- **Settings**: USD → CAD and BRL → CAD rates (editable, or refreshed from the Bank of Canada), the single category list used everywhere, asset definitions (type, institution, owner and holding build the name; assets are archived, never deleted, and archived ones are hidden unless you uncheck Hide archived), each holding's asset-class split and the target allocation (classes left blank stay out of the percentages), and the FIRE assumptions — blank ones fall back to values worked out from your data, shown in grey
 - **Backup / Restore** of all app data as one JSON file; a restore is validated first and replaces everything only after you confirm
 
 ## Supported Banks
@@ -92,19 +93,23 @@ tools/category-benchmark/
 ```
 js/
   main.js             # app initialization
-  state.js            # shared mutable state (transactions, settings, balances, closed months, sort, filters)
+  state.js            # shared mutable state (transactions, settings, balances, closed months, registered room, sort, filters)
   dom.js              # DOM element references
-  utils.js            # CSV line parsing, BRL-to-CAD conversion, local month keys, HTML escaping, file reading
+  utils.js            # CSV line parsing, BRL-to-CAD conversion, local month keys, number formatting, HTML escaping, file reading
   constants.js        # shared literals: transaction types, base currency
   category-engine.js  # generic category keywords, auto-categorization logic (no DOM deps)
   personal-keywords.example.js  # template for optional gitignored personal-keywords.js
   categories.js       # loads keyword map, wraps categorizer, category dropdowns, UI handlers
   ignore-rules.js     # import ignore list: generic + personal prefixes, starts-with matcher (no DOM deps)
   storage.js          # LocalStorage load/save
-  settings.js         # rules for rates, categories, and assets (no DOM deps)
+  settings.js         # rules for rates, categories, assets, asset-class splits and FIRE inputs; settings migration (no DOM deps)
   settings-ui.js      # Settings tab, Backup / Restore
   balance-sheet.js    # Balance Sheet model: balances, net worth, monthly flows, indicators (no DOM deps)
   balance-sheet-ui.js # Balance Sheet tab rendering and editing
+  fire.js             # Investments & FIRE model: FI stats, projection, allocation (no DOM deps)
+  registered-room.js  # RRSP / TFSA room rules (no DOM deps)
+  fire-ui.js          # Investments & FIRE tab rendering and room editing
+  explanations.js     # hover-explanation texts and markup
   backup.js           # backup file format and validation (no DOM deps)
   rates.js            # Bank of Canada exchange-rate fetch
   tabs.js             # tab switching

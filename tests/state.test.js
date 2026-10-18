@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { transactions, settings, balances, closedMonths, replaceAll } from '../js/state.js';
+import { transactions, settings, balances, closedMonths, registeredRoom, replaceAll } from '../js/state.js';
 import { emptySettings } from '../js/settings.js';
 
 describe('replaceAll', () => {
@@ -54,5 +54,32 @@ describe('replaceAll', () => {
         // Assert
         expect(settings).not.toHaveProperty('extra');
         expect(balances).toEqual({});
+    });
+});
+
+describe('replaceAll registered room', () => {
+    it('replaces the registered room in place with a copy', () => {
+        // Arrange
+        const ref = registeredRoom;
+        const next = [{ year: 2026, account: 'RRSP', person: 'Alex', room: 100, contributed: null }];
+
+        // Act
+        replaceAll({ transactions: [], settings: emptySettings(), balances: {}, closedMonths: [], registeredRoom: next });
+        next[0].room = 5;
+
+        // Assert
+        expect(registeredRoom).toBe(ref);
+        expect(registeredRoom).toEqual([{ year: 2026, account: 'RRSP', person: 'Alex', room: 100, contributed: null }]);
+    });
+
+    it('empties the registered room when the data has none', () => {
+        // Arrange
+        registeredRoom.push({ year: 2026, account: 'RRSP', person: 'Alex', room: 1, contributed: 1 });
+
+        // Act
+        replaceAll({ transactions: [], settings: emptySettings(), balances: {}, closedMonths: [] });
+
+        // Assert
+        expect(registeredRoom).toEqual([]);
     });
 });

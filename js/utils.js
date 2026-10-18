@@ -16,6 +16,30 @@ export function monthKey(date) {
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
 }
 
+export const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/** @returns {string} 'Sep 2026' for month key '2026-09' */
+export const monthLabel = key => `${MONTH_NAMES[Number(key.slice(5)) - 1]} ${key.slice(0, 4)}`;
+
+/** @returns {string} `value` with thousands separators and exactly `decimals` decimals */
+export const formatNumber = (value, decimals) =>
+    value.toLocaleString('en-CA', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+
+/** @returns {string} a ratio as '+12.5%' / '-3.0%' / '0.0%', or '—' when null */
+export function formatSignedPercent(ratio) {
+    if (ratio === null) {
+        return '—';
+    }
+
+    const rounded = Number((ratio * 100).toFixed(1));
+
+    // Rounding can leave "-0.0"; show an unchanged value without a sign.
+    return rounded === 0 ? '0.0%' : `${rounded > 0 ? '+' : ''}${rounded.toFixed(1)}%`;
+}
+
+/** @returns {string} '$1,234' or '-$1,234' */
+export const formatMoney = (value, decimals = 0) => `${value < 0 ? '-' : ''}$${formatNumber(Math.abs(value), decimals)}`;
+
 /**
  * 'YYYY-MM-DD' of a date's local calendar day, as a date input expects.
  * @param {Date} date

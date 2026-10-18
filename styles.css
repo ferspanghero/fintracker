@@ -824,6 +824,39 @@ table.grid {
     text-align: center;
 }
 
+.check-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.check-option label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    font-weight: normal;
+    cursor: pointer;
+}
+
+.hint-inline {
+    color: var(--muted);
+    font-size: 0.8rem;
+}
+
+.assets input[data-field="name"] {
+    min-width: 260px;
+}
+
+.assets input[data-field="name"][readonly] {
+    color: var(--muted);
+}
+
+.assets :is(input[data-field="institution"], input[data-field="owner"], input[data-field="holding"]) {
+    min-width: 110px;
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
     .controls {
@@ -851,4 +884,362 @@ table.grid {
 
 .hidden {
     display: none;
+}
+
+/* Hover explanations: a dotted term shows its balloon after a short hover or at once on keyboard focus. */
+.tip {
+    position: relative;
+    cursor: help;
+    border-bottom: 1px dotted var(--muted);
+}
+
+.tip:focus-visible {
+    outline: 2px solid var(--blue);
+    outline-offset: 2px;
+}
+
+.tip-box {
+    position: absolute;
+    left: 0;
+    top: calc(100% + 6px);
+    z-index: 20;
+    width: min(260px, 70vw);
+    padding: 8px 10px;
+    background: var(--th);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    color: var(--fg);
+    font-size: 0.78rem;
+    font-weight: normal;
+    font-style: normal;
+    line-height: 1.4;
+    text-align: left;
+    text-transform: none;
+    letter-spacing: normal;
+    white-space: normal;
+    /* Out of layout until shown, so hidden balloons never widen the page. */
+    display: none;
+}
+
+.tip.end .tip-box {
+    left: auto;
+    right: 0;
+}
+
+.tip:hover .tip-box {
+    display: block;
+    animation: tip-show 0.15s 1s both;
+}
+
+@keyframes tip-show {
+    from {
+        visibility: hidden;
+        opacity: 0;
+    }
+
+    to {
+        visibility: visible;
+        opacity: 1;
+    }
+}
+
+/* Any focus, including a tap on a touch screen, shows the balloon at once. */
+.tip:focus .tip-box {
+    display: block;
+    animation: none;
+}
+
+.tip.tip-dismissed .tip-box {
+    display: none;
+}
+
+/* Investments & FIRE */
+.fire {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.fire h2 {
+    margin-bottom: 8px;
+}
+
+.fire .hint {
+    margin: 0 0 10px;
+}
+
+#fire-stats {
+    margin-top: 8px;
+}
+
+#fire-warning {
+    margin-top: 10px;
+}
+
+.fire-table {
+    margin-bottom: 0;
+    font-size: 0.85rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.fire-table th, .fire-table td {
+    padding: 7px 10px;
+    text-align: left;
+    white-space: nowrap;
+}
+
+.fire-table thead th {
+    font-size: 0.78rem;
+    color: var(--muted);
+}
+
+.fire-table tbody th {
+    font-weight: normal;
+    background: none;
+}
+
+.fire-table .r {
+    text-align: right;
+}
+
+.fire-table .neg {
+    color: var(--neg);
+}
+
+.fire-table .pos {
+    color: var(--pos);
+}
+
+.progress-line {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    font-size: 0.9rem;
+}
+
+.progress {
+    flex: 1;
+    height: 14px;
+    background: var(--input);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: var(--green);
+}
+
+.fire-figures {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 28px;
+    margin-top: 12px;
+    font-size: 0.88rem;
+}
+
+/* Projection rows follow the Balance Sheet's closed / open months. */
+#fire-projection th.y {
+    font-weight: bold;
+}
+
+#fire-projection th.y .state {
+    display: block;
+    font-size: 0.62rem;
+    font-weight: normal;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+#fire-projection tr.actual th.y {
+    background: var(--closed-head);
+    color: #fff;
+}
+
+#fire-projection tr.actual td {
+    background: var(--closed-tint);
+}
+
+#fire-projection :is(tr.open, tr.projected) th.y {
+    background: var(--th);
+    color: var(--muted);
+}
+
+#fire-projection :is(tr.open, tr.projected) td {
+    color: var(--open-ink);
+    font-style: italic;
+}
+
+#fire-projection :is(tr.open, tr.projected) td.neg {
+    color: var(--neg);
+}
+
+#fire-projection tr.none td {
+    color: var(--muted);
+}
+
+#fire-projection .act {
+    color: var(--fg);
+    font-style: normal;
+}
+
+#fire-projection .when {
+    color: var(--muted);
+    font-size: 0.75rem;
+}
+
+#fire-projection b {
+    color: var(--fg);
+}
+
+.fi-badge {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 0 6px;
+    border-radius: 3px;
+    background: var(--green);
+    color: #fff;
+    font-size: 0.7rem;
+    font-style: normal;
+    font-weight: bold;
+}
+
+.alloc-bar {
+    position: relative;
+    width: 160px;
+    height: 8px;
+    background: var(--input);
+    border-radius: 4px;
+}
+
+.alloc-fill {
+    position: absolute;
+    inset: 0 auto 0 0;
+    max-width: 100%;
+    background: var(--blue);
+    border-radius: 4px;
+}
+
+.alloc-mark {
+    position: absolute;
+    top: -3px;
+    bottom: -3px;
+    width: 2px;
+    background: var(--fg);
+}
+
+.warn-ink {
+    color: var(--warn-ink);
+}
+
+.room-warn {
+    display: inline-block;
+    padding: 1px 8px;
+    border-radius: 3px;
+    background: var(--warn-bg);
+    color: var(--warn-ink);
+    font-size: 0.8rem;
+}
+
+.fire-pair {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(420px, 100%), 1fr));
+    gap: 20px;
+}
+
+.fire-room-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px 12px;
+    margin-bottom: 8px;
+}
+
+.fire-room-head h2 {
+    margin: 0;
+}
+
+.fire-room-head .bs-year {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.fire-room-head label {
+    margin: 0;
+}
+
+#fire-room input {
+    width: 110px;
+    margin: 0;
+    padding: 4px 6px;
+    text-align: right;
+}
+
+.fire-assumptions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 10px 28px;
+    font-size: 0.88rem;
+}
+
+.fire-assumptions div {
+    display: flex;
+    gap: 8px;
+}
+
+.fire-assumptions dd {
+    font-weight: bold;
+}
+
+/* Settings: asset classes and FIRE assumptions */
+.classes input {
+    width: 64px;
+    text-align: right;
+}
+
+.classes .total {
+    font-variant-numeric: tabular-nums;
+}
+
+.classes .total.bad {
+    color: var(--warn-ink);
+    font-weight: bold;
+}
+
+.classes tr.target th {
+    font-weight: bold;
+}
+
+.fire-input {
+    display: grid;
+    grid-template-columns: minmax(150px, 1fr) 1fr;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.fire-input label, .fire-input input, .fire-input select {
+    margin: 0;
+}
+
+.fire-input label {
+    font-weight: normal;
+}
+
+/* A value worked out from your data (a blank input's default, or one shown on the tab) is grey italic,
+   like the Balance Sheet's open months. */
+input.has-default::placeholder {
+    color: var(--open-ink);
+    font-style: italic;
+    opacity: 1;
+}
+
+.fire-assumptions dd.default {
+    color: var(--open-ink);
+    font-style: italic;
+    font-weight: normal;
 }

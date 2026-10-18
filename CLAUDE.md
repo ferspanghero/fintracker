@@ -24,12 +24,15 @@ js/category-engine.js   # pure categorization: keyword map + matcher, no DOM dep
 js/personal-keywords.js # gitignored local overrides (template: personal-keywords.example.js)
 js/categories.js        # loads the merged keyword map, wraps the categorizer, drives dropdowns
 js/ignore-rules.js      # import ignore list: generic prefixes, personal-file loader, matcher
-js/settings.js          # pure rules for rates, the category list, assets
+js/settings.js          # pure rules for rates, the category list, assets, class splits, FIRE inputs; migrateSettings
 js/balance-sheet.js     # pure Balance Sheet model (buildYear + balance helpers)
+js/fire.js              # pure Investments & FIRE model (buildFire: FI stats, projection, allocation)
+js/registered-room.js   # pure RRSP / TFSA room rules
+js/explanations.js      # hover-explanation texts + tip() markup
 js/backup.js            # pure backup format + validateBackup
 js/constants.js         # shared literals (transaction types, base currency) — use these, not string literals
 js/modal.js             # every dialog opens and closes through openModal / closeModal
-js/*-ui.js              # tab rendering/wiring for Balance Sheet and Settings
+js/*-ui.js              # tab rendering/wiring for Balance Sheet, Investments & FIRE, and Settings
 js/parsers/             # one module per bank format + a registry
 tests/                  # mirrors js/; fixtures/ holds injectable module fixtures
 tests/e2e/              # Playwright specs, shared helpers, static test server
@@ -45,14 +48,18 @@ tools/category-benchmark/
 - **Income vs expense comes from the amount's sign or debit/credit columns, never a bank's type label** — labels miss refunds and other credits (see the parser contract in `project_files/overview.md`).
 - A fresh clone works with zero config: a missing personal-keywords file falls back to generic keywords only.
 - **State is mutated in place.** `state.js` exports are shared references; update them (or call `replaceAll`) — never reassign. `storage.js` is the only LocalStorage reader/writer; loading never writes.
-- **Keep pure modules pure.** `settings.js`, `balance-sheet.js`, `backup.js`, `rates.js`, `category-engine.js` take data (and `today`/`now`/`fetch`) as arguments; DOM work lives in the UI modules.
+- **Keep pure modules pure.** `settings.js`, `balance-sheet.js`, `fire.js`, `registered-room.js`, `backup.js`, `rates.js`, `category-engine.js` take data (and `today`/`now`/`fetch`) as arguments; DOM work lives in the UI modules.
 - **Every stored transaction category must exist in `settings.categories` for its type** — otherwise the app's own Backup fails `validateBackup`. Any new write path must add the category through `settings.js` (`ensureCategory`) or fall back to `Sem Categoria`; imports do this only for rows they keep.
+- **Settings and backups are versioned.** A change to the stored shape bumps `SETTINGS_VERSION` / `BACKUP_VERSION`, extends `migrateSettings` (loading and old backups go through it), and adds the new fields to `backup.js`'s rebuild — Restore keeps only fields it knows, so a field missing there is silently dropped. Keep the buildBackup → JSON → validateBackup round-trip test passing.
+- **User-typed names never become object keys.** Holding splits and registered room are stored as lists of `{ name | person, … }`; look entries up ignoring case.
+- **Edits that keep focus update in place.** Room inputs, asset details, class splits and FIRE inputs save and patch their own row or field instead of re-rendering, so Tab lands where the user expects — keep it that way when adding fields.
+- **Worked-out defaults look like open months.** A setting left blank that falls back to a value from the user's data (retirement spending, projection years) shows that value as a grey italic placeholder (`input.has-default`) and states it in its hover explanation (`tip(..., { extra })`); the tab shows such values with `dd.default`. Follow the same pattern for any new default.
 - **Dialogs go through `js/modal.js`**, never `style.display`: it moves focus in and back, makes the page inert, keeps stacked dialogs in order, and fires `modal-close` so owners can drop pending state.
 - **The Balance Sheet grid re-renders on every save**, replacing the rows whose markup changed. Code that acts after a save must look elements up again by their data attributes (see `cellFor` / `relocator` in `balance-sheet-ui.js`), not hold references. Grid saves use `saveBalanceSheet()`, which skips transactions and settings — a grid action that changes those must call `saveData()`. Moving the selection and ending an edit unchanged must not save or re-render — that keeps navigation instant.
 - **Month keys use local time** (`monthKey`, `dateInputValue` in `utils.js`), never `toISOString()`. Exception: `getTransactionKey` keeps its UTC date — changing it breaks duplicate detection against stored data.
 - **Parsers receive a context:** `parseLine(line, { rates })`; a parser that can't work without it implements `validateContext` to refuse the whole file.
 - **Unit tests start with a sample category list** (`tests/fixtures/sample-categories.js`), and the DOM fixture is read from `index.html` — new element ids only need adding to `index.html` and `dom.js`.
-- **E2E specs use synthetic data only**, a fixed clock, and a mocked Bank of Canada (`tests/e2e/helpers.js`). The test server serves only `index.html`, `styles.css`, and `js/` (never personal keywords). `@playwright/test` is pinned to the version matching the locally cached browsers — don't bump it without checking the browser builds.
+- **E2E specs use synthetic data only**, a fixed clock, and a mocked Bank of Canada (`tests/e2e/helpers.js`; `makeSettings` returns current-format settings). The test server serves only `index.html`, `styles.css`, and `js/` (never personal keywords). `@playwright/test` is pinned to the version matching the locally cached browsers — don't bump it without checking the browser builds.
 
 ## Categorization rules
 

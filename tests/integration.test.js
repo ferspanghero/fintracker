@@ -328,7 +328,7 @@ describe('Integration: full init cycle', () => {
 describe('Integration: app data always passes backup validation', () => {
     it('stays restorable after a fresh-install import and a manual transaction', async () => {
         // Arrange
-        const { replaceAll, settings: liveSettings, balances, closedMonths } = await import('../js/state.js');
+        const { replaceAll, settings: liveSettings, balances, closedMonths, registeredRoom } = await import('../js/state.js');
         const { buildBackup, validateBackup } = await import('../js/backup.js');
         const { populateTransactionCategorySelect } = await import('../js/categories.js');
         const { handleAddTransaction } = await import('../js/transactions.js');
@@ -349,7 +349,7 @@ describe('Integration: app data always passes backup validation', () => {
 
         // Act
         handleAddTransaction(new Event('submit', { cancelable: true }));
-        const backup = JSON.parse(JSON.stringify(buildBackup({ settings: liveSettings, transactions, balances, closedMonths }, new Date())));
+        const backup = JSON.parse(JSON.stringify(buildBackup({ settings: liveSettings, transactions, balances, closedMonths, registeredRoom }, new Date())));
 
         // Assert
         expect(transactions.map(t => t.category)).toEqual(['Sem Categoria', 'presentes', 'presentes', 'Sem Categoria']);

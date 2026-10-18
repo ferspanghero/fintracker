@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { loadData, saveData, saveBalanceSheet, clearLegacyKeys } from '../js/storage.js';
-import { transactions, settings, balances, closedMonths } from '../js/state.js';
-import { emptySettings } from '../js/settings.js';
+import { loadData, saveData, saveBalanceSheet, saveRegisteredRoom, clearLegacyKeys } from '../js/storage.js';
+import { transactions, settings, balances, closedMonths, registeredRoom } from '../js/state.js';
+import { emptySettings, migrateSettings } from '../js/settings.js';
 
 const sampleTransaction = () => ({
     date: new Date(2025, 3, 12), description: 'Test', amount: 50,
@@ -19,6 +19,7 @@ describe('loadData', () => {
         transactions.push(sampleTransaction());
         balances['2026-01'] = { a: 1 };
         closedMonths.push('2026-01');
+        registeredRoom.push({ year: 2026, account: 'TFSA', person: 'Sam', room: 1, contributed: null });
 
         // Act
         loadData();
@@ -27,6 +28,7 @@ describe('loadData', () => {
         expect(transactions).toEqual([]);
         expect(balances).toEqual({});
         expect(closedMonths).toEqual([]);
+        expect(registeredRoom).toEqual([]);
         expect(settings).toEqual(emptySettings());
     });
 
@@ -46,12 +48,17 @@ describe('loadData', () => {
         expect(transactions[0].description).toBe('Test');
     });
 
-    it('loads settings, balances and closed months', () => {
+    it('loads settings, balances, closed months and registered room', () => {
         // Arrange
-        const savedSettings = { ...emptySettings(), assets: [{ id: 'a', name: 'Savings', currency: 'CAD', archived: false }] };
+        const savedSettings = {
+            ...emptySettings(),
+            assets: [{ id: 'a', name: 'TFSA - Sam', currency: 'CAD', archived: false, type: 'TFSA', institution: '', owner: 'Sam', holding: '' }]
+        };
+        const room = [{ year: 2026, account: 'TFSA', person: 'Sam', room: 7000, contributed: 500 }];
         localStorage.setItem('settings', JSON.stringify(savedSettings));
         localStorage.setItem('balances', JSON.stringify({ '2026-09': { a: 12.5 } }));
         localStorage.setItem('closedMonths', JSON.stringify(['2026-09']));
+        localStorage.setItem('registeredRoom', JSON.stringify(room));
 
         // Act
         loadData();
@@ -60,6 +67,22 @@ describe('loadData', () => {
         expect(settings).toEqual(savedSettings);
         expect(balances).toEqual({ '2026-09': { a: 12.5 } });
         expect(closedMonths).toEqual(['2026-09']);
+        expect(registeredRoom).toEqual(room);
+    });
+
+    it('migrates version 1 settings as it loads them', () => {
+        // Arrange
+        const saved = { ...emptySettings(), version: 1, assets: [{ id: 'a', name: 'Savings', currency: 'CAD', archived: false }] };
+        delete saved.fire;
+        localStorage.setItem('settings', JSON.stringify(saved));
+
+        // Act
+        loadData();
+
+        // Assert
+        expect(settings).toEqual(migrateSettings(saved));
+        expect(settings.version).toBe(2);
+        expect(settings.assets[0].type).toBeNull();
     });
 
     it('fills settings sections missing from storage with fresh-install defaults', () => {
@@ -97,11 +120,12 @@ describe('loadData', () => {
 });
 
 describe('saveData', () => {
-    it('saves all four keys', () => {
+    it('saves all five keys', () => {
         // Arrange
         transactions.push(sampleTransaction());
         balances['2026-09'] = { a: 3 };
         closedMonths.push('2026-09');
+        registeredRoom.push({ year: 2026, account: 'RRSP', person: 'Alex', room: 100, contributed: 50 });
 
         // Act
         saveData();
@@ -114,6 +138,7 @@ describe('saveData', () => {
         expect(JSON.parse(localStorage.getItem('settings'))).toEqual(settings);
         expect(JSON.parse(localStorage.getItem('balances'))).toEqual({ '2026-09': { a: 3 } });
         expect(JSON.parse(localStorage.getItem('closedMonths'))).toEqual(['2026-09']);
+        expect(JSON.parse(localStorage.getItem('registeredRoom'))).toEqual(registeredRoom);
     });
 
     it('reports success', () => {
@@ -194,6 +219,23 @@ describe('saveBalanceSheet', () => {
         // Assert
         expect(saved).toBe(false);
         expect(alertSpy).toHaveBeenCalledWith('Could not save data. LocalStorage may be full or disabled.');
+    });
+});
+
+describe('saveRegisteredRoom', () => {
+    it('saves only the registered room', () => {
+        // Arrange
+        transactions.push(sampleTransaction());
+        registeredRoom.push({ year: 2026, account: 'TFSA', person: 'Sam', room: 7000, contributed: null });
+        const setItem = vi.spyOn(Storage.prototype, 'setItem');
+
+        // Act
+        const saved = saveRegisteredRoom();
+
+        // Assert
+        expect(saved).toBe(true);
+        expect(setItem.mock.calls.map(([key]) => key)).toEqual(['registeredRoom']);
+        expect(JSON.parse(localStorage.getItem('registeredRoom'))).toEqual(registeredRoom);
     });
 });
 

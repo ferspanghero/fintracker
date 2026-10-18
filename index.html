@@ -15,6 +15,7 @@
         <nav class="tabs" role="tablist" aria-label="Sections">
             <button type="button" id="tab-transactions" role="tab" aria-selected="true" aria-controls="panel-transactions">Transactions</button>
             <button type="button" id="tab-balance-sheet" role="tab" aria-selected="false" aria-controls="panel-balance-sheet">Balance Sheet</button>
+            <button type="button" id="tab-fire" role="tab" aria-selected="false" aria-controls="panel-fire">Investments &amp; FIRE</button>
             <button type="button" id="tab-settings" role="tab" aria-selected="false" aria-controls="panel-settings">Settings</button>
         </nav>
 
@@ -143,6 +144,65 @@
             <p class="hint">Average uses closed months only; Prev. year avg uses the previous year's closed months. CAD values use the rates in Settings.</p>
         </section>
 
+        <section id="panel-fire" role="tabpanel" aria-labelledby="tab-fire" hidden>
+            <p id="fire-empty" class="hint" hidden>Enter balances on the Balance Sheet to see where you stand.</p>
+            <p id="fire-rate-note" class="message" role="status"></p>
+            <div id="fire-content" class="fire" hidden>
+                <section aria-labelledby="fire-stand-title">
+                    <h2 id="fire-stand-title">Where you stand</h2>
+                    <p class="hint">Hover over a dotted term, or Tab to it, to see what it means.</p>
+                    <div id="fire-stats" class="kpis"></div>
+                    <p id="fire-warning" class="message" role="status"></p>
+                </section>
+                <section class="box" aria-labelledby="fire-progress-title">
+                    <h2 id="fire-progress-title">Progress to FI</h2>
+                    <div id="fire-progress"></div>
+                </section>
+                <section class="box" aria-labelledby="fire-projection-title">
+                    <h2 id="fire-projection-title">Projection</h2>
+                    <p id="fire-projection-hint" class="hint"></p>
+                    <div class="table-container">
+                        <table id="fire-projection" class="fire-table" aria-labelledby="fire-projection-title"></table>
+                    </div>
+                </section>
+                <section class="box" aria-labelledby="fire-allocation-title">
+                    <h2 id="fire-allocation-title">Allocation vs target</h2>
+                    <p class="hint">Latest balances in CAD, spread by each holding's class split. Once targets are set, the percentages cover only the classes that have one. The bar is the current share; the white mark is the target.</p>
+                    <div class="table-container">
+                        <table id="fire-allocation" class="fire-table" aria-labelledby="fire-allocation-title"></table>
+                    </div>
+                </section>
+                <div class="fire-pair">
+                    <section class="box" aria-labelledby="fire-holdings-title">
+                        <h2 id="fire-holdings-title">Holdings</h2>
+                        <p class="hint">Every asset with a balance in the latest month, largest first.</p>
+                        <div class="table-container">
+                            <table id="fire-holdings" class="fire-table" aria-labelledby="fire-holdings-title"></table>
+                        </div>
+                    </section>
+                    <section class="box" aria-labelledby="fire-room-title">
+                        <div class="fire-room-head">
+                            <h2 id="fire-room-title">Registered room</h2>
+                            <div class="bs-year">
+                                <label for="fire-room-year">Year</label>
+                                <select id="fire-room-year"></select>
+                            </div>
+                        </div>
+                        <p class="hint">Only this section changes with the year; everything else is as of the latest month. Enter each year's room and contributions per person.</p>
+                        <div class="table-container">
+                            <table id="fire-room" class="fire-table" aria-labelledby="fire-room-title"></table>
+                        </div>
+                        <p id="fire-room-message" class="message" role="alert"></p>
+                    </section>
+                </div>
+                <section class="box" aria-labelledby="fire-assumptions-title">
+                    <h2 id="fire-assumptions-title">Assumptions</h2>
+                    <div id="fire-assumptions" class="fire-assumptions"></div>
+                    <p class="hint">Edit these in Settings.</p>
+                </section>
+            </div>
+        </section>
+
         <section id="panel-settings" role="tabpanel" aria-labelledby="tab-settings" hidden>
             <div class="settings">
                 <div class="box">
@@ -181,15 +241,23 @@
 
                 <div class="box wide">
                     <h2>Assets</h2>
+                    <div class="check-option">
+                        <label><input type="checkbox" id="hide-archived-assets" aria-describedby="hide-archived-count" checked> Hide archived</label>
+                        <span id="hide-archived-count" class="hint-inline" aria-live="polite"></span>
+                    </div>
                     <div class="table-container">
                         <table class="assets">
                             <thead>
-                                <tr><th>Name</th><th>Currency</th><th class="ctr">Archived</th></tr>
+                                <tr><th>Name</th><th>Type</th><th>Institution</th><th>Owner</th><th>Holding</th><th>Currency</th><th class="ctr">Archived</th></tr>
                             </thead>
                             <tbody id="assets-body"></tbody>
                         </table>
                     </div>
                     <div class="inline">
+                        <select id="new-asset-type" aria-label="New asset type"></select>
+                        <input type="text" id="new-asset-institution" placeholder="Institution" aria-label="New asset institution">
+                        <input type="text" id="new-asset-owner" placeholder="Owner" aria-label="New asset owner">
+                        <input type="text" id="new-asset-holding" placeholder="Holding" aria-label="New asset holding">
                         <input type="text" id="new-asset-name" placeholder="New asset name" aria-label="New asset name">
                         <select id="new-asset-currency" aria-label="New asset currency">
                             <option value="CAD">CAD</option>
@@ -199,7 +267,23 @@
                         <button type="button" id="add-asset-btn">Add Asset</button>
                     </div>
                     <p id="asset-message" class="message" role="alert"></p>
-                    <p class="hint">Archived assets stay in the years they had a balance. Assets are never deleted.</p>
+                    <p class="hint">With a Type, the name is built from Type, Institution, Owner and Holding; without one, type a name. Archived assets stay in the years they had a balance. Assets are never deleted.</p>
+                </div>
+
+                <div class="box wide">
+                    <h2>Asset classes</h2>
+                    <div class="table-container">
+                        <table id="classes-table" class="assets classes"></table>
+                    </div>
+                    <p id="classes-message" class="message" role="alert"></p>
+                    <p class="hint">Each holding's % per class must add up to 100%, and so must the Target row; leave a row blank to clear it. In the Target row, a blank class has no target and is left out of the allocation percentages, while 0 means you want none of it. Assets without a Holding can't get a split and count fully toward the FI portfolio.</p>
+                </div>
+
+                <div class="box">
+                    <h2>FIRE assumptions</h2>
+                    <div id="fire-inputs" class="fire-inputs"></div>
+                    <p id="fire-input-message" class="message" role="alert"></p>
+                    <p class="hint">Percentages are typed as numbers: 4 means 4%.</p>
                 </div>
 
                 <div class="box wide">
@@ -210,7 +294,7 @@
                         <input type="file" id="restore-file" accept=".json,application/json" hidden>
                     </div>
                     <div id="backup-message" class="message" role="alert"></div>
-                    <p class="hint">One JSON file with all app data: settings, transactions, balances and closed months. Restore checks the file first and replaces everything after you confirm.</p>
+                    <p class="hint">One JSON file with all app data: settings, transactions, balances, closed months and registered room. Restore checks the file first and replaces everything after you confirm.</p>
                 </div>
             </div>
         </section>

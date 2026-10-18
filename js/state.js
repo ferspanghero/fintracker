@@ -6,6 +6,8 @@ export const transactions = [];
 export const settings = emptySettings();
 export const balances = {};
 export const closedMonths = [];
+// RRSP/TFSA room entries: { year, account, person, room, contributed } (see registered-room.js).
+export const registeredRoom = [];
 
 export const currentSort = { field: 'date', direction: 'asc' };
 export const currentFilter = { dateRange: 'all', startDate: null, endDate: null, category: 'all', textFilter: '' };
@@ -17,8 +19,8 @@ function replaceObject(target, source) {
 
 /**
  * Replaces all app data in place (used by load and Restore).
- * Transactions are taken as given; settings and balances are deep-copied.
- * @param {{transactions: object[], settings: object, balances: object, closedMonths: string[]}} data
+ * Transactions are taken as given; settings, balances and room entries are deep-copied.
+ * @param {{transactions: object[], settings: object, balances: object, closedMonths: string[], registeredRoom?: object[]}} data
  */
 export function replaceAll(data) {
     transactions.length = 0;
@@ -27,4 +29,6 @@ export function replaceAll(data) {
     replaceObject(balances, data.balances);
     closedMonths.length = 0;
     closedMonths.push(...data.closedMonths);
+    registeredRoom.length = 0;
+    registeredRoom.push(...structuredClone(data.registeredRoom ?? []));
 }

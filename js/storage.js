@@ -1,6 +1,6 @@
 // The only LocalStorage reader/writer.
-import { transactions, settings, balances, closedMonths, replaceAll } from './state.js';
-import { emptySettings } from './settings.js';
+import { transactions, settings, balances, closedMonths, registeredRoom, replaceAll } from './state.js';
+import { migrateSettings } from './settings.js';
 
 const LEGACY_CATEGORIES_KEY = 'categories';
 
@@ -17,9 +17,10 @@ export function loadData() {
 
     replaceAll({
         transactions: savedTransactions.map(t => ({ ...t, date: new Date(t.date) })),
-        settings: { ...emptySettings(), ...savedSettings },
+        settings: migrateSettings(savedSettings),
         balances: read('balances') ?? {},
-        closedMonths: read('closedMonths') ?? []
+        closedMonths: read('closedMonths') ?? [],
+        registeredRoom: read('registeredRoom') ?? []
     });
 }
 
@@ -42,7 +43,10 @@ function write(entries) {
  * @returns {boolean} whether everything was saved
  */
 export function saveData() {
-    return write([['transactions', transactions], ['settings', settings], ['balances', balances], ['closedMonths', closedMonths]]);
+    return write([
+        ['transactions', transactions], ['settings', settings], ['balances', balances],
+        ['closedMonths', closedMonths], ['registeredRoom', registeredRoom]
+    ]);
 }
 
 /**
@@ -52,6 +56,14 @@ export function saveData() {
  */
 export function saveBalanceSheet() {
     return write([['balances', balances], ['closedMonths', closedMonths]]);
+}
+
+/**
+ * Saves only the registered room, the data the room table changes.
+ * @returns {boolean} whether it was saved
+ */
+export function saveRegisteredRoom() {
+    return write([['registeredRoom', registeredRoom]]);
 }
 
 /** Removes keys older versions wrote that the app no longer reads (called by Restore). */

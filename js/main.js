@@ -7,9 +7,11 @@ import { addEventListeners } from './events.js';
 import { initTabs } from './tabs.js';
 import { initBalanceSheet, renderBalanceSheet } from './balance-sheet-ui.js';
 import { initSettings, renderSettings } from './settings-ui.js';
+import { initFire, renderFire } from './fire-ui.js';
+import { initTips } from './explanations.js';
 
 // Settings changes (categories, restore) reach the Transactions view right away;
-// the Balance Sheet and Settings re-render whenever their tab is opened.
+// the Balance Sheet, Investments & FIRE and Settings re-render whenever their tab is opened.
 function refreshTransactionsView() {
     populateCategoryDropdowns();
     renderTransactions();
@@ -18,6 +20,7 @@ function refreshTransactionsView() {
 
 const TAB_RENDERERS = {
     'tab-balance-sheet': renderBalanceSheet,
+    'tab-fire': renderFire,
     'tab-settings': renderSettings
 };
 
@@ -42,6 +45,8 @@ export function init() {
     // Add event listeners
     addEventListeners();
     initBalanceSheet();
+    initFire();
+    initTips();
     initSettings({ onDataChanged: refreshTransactionsView });
     initTabs({ onActivate: tabId => TAB_RENDERERS[tabId]?.() });
 }

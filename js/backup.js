@@ -1,21 +1,28 @@
 // Pure Backup / Restore format: one JSON object with all app data. Restore is
 // all-or-nothing, so validation collects every problem before anything changes.
 
-import { CURRENCIES, RATE_CURRENCIES, SETTINGS_VERSION } from './settings.js';
+import {
+    CURRENCIES, RATE_CURRENCIES, SETTINGS_VERSION, ASSET_TYPES, CLASS_KEYS, FIRE_DEFAULTS,
+    splitError, fireFieldError, projectionYearsError, migrateSettings, migrateFire
+} from './settings.js';
+import { roomEntriesErrors } from './registered-room.js';
 import { UNCATEGORIZED } from './category-engine.js';
 import { isMonthKey } from './balance-sheet.js';
 import { EXPENSE, TRANSACTION_TYPES } from './constants.js';
 
 export const BACKUP_APP = 'fintracker';
-export const BACKUP_VERSION = 1;
+export const BACKUP_VERSION = 2;
+// Older backups that still restore: backup version → the settings version it carries.
+const SETTINGS_VERSION_OF = { 1: 1, [BACKUP_VERSION]: SETTINGS_VERSION };
+const DETAIL_TEXT_FIELDS = ['institution', 'owner', 'holding'];
 
 /**
  * Wraps all app data in the backup envelope. Dates serialize as ISO strings via JSON.
- * @param {{settings: object, transactions: object[], balances: object, closedMonths: string[]}} state
+ * @param {{settings: object, transactions: object[], balances: object, closedMonths: string[], registeredRoom: object[]}} state
  * @param {Date} now
  * @returns {object}
  */
-export function buildBackup({ settings, transactions, balances, closedMonths }, now) {
+export function buildBackup({ settings, transactions, balances, closedMonths, registeredRoom }, now) {
     return {
         app: BACKUP_APP,
         version: BACKUP_VERSION,
@@ -23,7 +30,8 @@ export function buildBackup({ settings, transactions, balances, closedMonths }, 
         settings,
         transactions,
         balances,
-        closedMonths
+        closedMonths,
+        registeredRoom
     };
 }
 
@@ -103,7 +111,8 @@ function checkCategories(categories, errors) {
     return usable;
 }
 
-function checkAssets(assets, errors) {
+// `withDetails` adds the version 2 asset fields (type, institution, owner, holding).
+function checkAssets(assets, errors, withDetails) {
     if (!Array.isArray(assets)) {
         errors.push('Assets must be a list.');
 
@@ -139,9 +148,92 @@ function checkAssets(assets, errors) {
         if (typeof asset?.archived !== 'boolean') {
             errors.push(`${where}: archived must be true or false.`);
         }
+
+        if (withDetails) {
+            checkAssetDetails(asset, where, errors);
+        }
     });
 
     return ids;
+}
+
+function checkAssetDetails(asset, where, errors) {
+    if (asset?.type !== null && !ASSET_TYPES.some(type => type.name === asset?.type)) {
+        errors.push(`${where}: unknown type "${asset?.type}".`);
+    }
+
+    DETAIL_TEXT_FIELDS.filter(field => typeof asset?.[field] !== 'string').forEach(field => errors.push(`${where}: ${field} must be text.`));
+}
+
+function checkHoldings(holdings, errors) {
+    if (!Array.isArray(holdings)) {
+        errors.push('Holdings must be a list.');
+
+        return;
+    }
+
+    const names = new Set();
+
+    holdings.forEach((holding, i) => {
+        const where = `Holding ${i + 1}`;
+
+        if (!isObject(holding)) {
+            errors.push(`${where}: must be an object.`);
+
+            return;
+        }
+
+        if (!isNonEmptyString(holding.name)) {
+            errors.push(`${where}: name is missing.`);
+        } else if (names.has(holding.name.toLowerCase())) {
+            errors.push(`${where}: "${holding.name}" appears more than once.`);
+        } else {
+            names.add(holding.name.toLowerCase());
+        }
+
+        const error = splitError(holding.split);
+
+        if (error) {
+            errors.push(`${where}: ${error}`);
+        }
+    });
+}
+
+function checkTargets(targets, errors) {
+    const error = isObject(targets) && !Object.keys(targets).length ? null : splitError(targets);
+
+    if (error) {
+        errors.push(`Targets: ${error}`);
+    }
+}
+
+// FIRE inputs saved while v4 was in development may carry a spending mode and fixed amount instead of the override.
+const withSpendingOverride = fire => (Object.hasOwn(fire, 'retirementSpending')
+    ? fire
+    : { ...fire, retirementSpending: migrateFire(fire).retirementSpending });
+
+function checkFire(stored, errors) {
+    if (!isObject(stored)) {
+        errors.push('FIRE settings are missing.');
+
+        return;
+    }
+
+    const fire = withSpendingOverride(stored);
+
+    Object.keys(FIRE_DEFAULTS).forEach(field => {
+        const error = fireFieldError(field, fire[field]);
+
+        if (error) {
+            errors.push(`FIRE ${field}: ${error}`);
+        }
+    });
+
+    const yearsError = projectionYearsError(fire);
+
+    if (yearsError) {
+        errors.push(`FIRE: ${yearsError}`);
+    }
 }
 
 function checkTransactions(transactions, categories, errors) {
@@ -227,20 +319,46 @@ function checkClosedMonths(closedMonths, errors) {
     });
 }
 
+// Settings are rebuilt from known fields only, so nothing else in the file (e.g. a "__proto__" key) reaches app state.
+const pick = (source, keys) => Object.fromEntries(keys.filter(key => Object.hasOwn(source, key)).map(key => [key, source[key]]));
+
+function rebuildVersionOneSettings(settings) {
+    return {
+        version: settings.version,
+        rates: { USD: settings.rates.USD, BRL: settings.rates.BRL, date: settings.rates.date, refreshedAt: settings.rates.refreshedAt },
+        categories: { expense: [...settings.categories.expense], income: [...settings.categories.income] },
+        assets: settings.assets.map(({ id, name, currency, archived }) => ({ id, name, currency, archived }))
+    };
+}
+
+function rebuildSettings(settings) {
+    return {
+        ...rebuildVersionOneSettings(settings),
+        assets: settings.assets.map(({ id, name, currency, archived, type, institution, owner, holding }) =>
+            ({ id, name, currency, archived, type, institution, owner, holding })),
+        holdings: settings.holdings.map(({ name, split }) => ({ name, split: pick(split, CLASS_KEYS) })),
+        targets: pick(settings.targets, CLASS_KEYS),
+        fire: migrateFire(settings.fire)
+    };
+}
+
 /**
  * Checks a parsed backup file.
+ * A version 1 backup is accepted and its settings migrated; it carries no registered room.
  * @param {unknown} backup
- * @returns {{ok: true, errors: [], data: object} | {ok: false, errors: string[]}} `data` holds
- *          settings, transactions (with Date objects), balances and closedMonths ready for replaceAll
+ * @returns {{ok: true, errors: [], data: object} | {ok: false, errors: string[]}} `data` holds settings,
+ *          transactions (with Date objects), balances, closedMonths and registeredRoom ready for replaceAll
  */
 export function validateBackup(backup) {
     if (!isObject(backup) || backup.app !== BACKUP_APP) {
         return { ok: false, errors: ['Not a FinTracker backup.'] };
     }
 
-    if (backup.version !== BACKUP_VERSION) {
+    if (!Object.hasOwn(SETTINGS_VERSION_OF, backup.version)) {
         return { ok: false, errors: [`Unsupported backup version ${backup.version}.`] };
     }
+
+    const current = backup.version === BACKUP_VERSION;
 
     const errors = [];
     const { settings } = backup;
@@ -250,18 +368,28 @@ export function validateBackup(backup) {
     if (!isObject(settings)) {
         errors.push('Settings are missing.');
     } else {
-        if (settings.version !== SETTINGS_VERSION) {
+        if (settings.version !== SETTINGS_VERSION_OF[backup.version]) {
             errors.push(`Unsupported settings version ${settings.version}.`);
         }
 
         checkRates(settings.rates, errors);
         categoriesUsable = checkCategories(settings.categories, errors);
-        assetIds = checkAssets(settings.assets, errors);
+        assetIds = checkAssets(settings.assets, errors, current);
+
+        if (current) {
+            checkHoldings(settings.holdings, errors);
+            checkTargets(settings.targets, errors);
+            checkFire(settings.fire, errors);
+        }
     }
 
     checkTransactions(backup.transactions, categoriesUsable ? settings.categories : null, errors);
     checkBalances(backup.balances, assetIds, errors);
     checkClosedMonths(backup.closedMonths, errors);
+
+    if (current) {
+        errors.push(...roomEntriesErrors(backup.registeredRoom));
+    }
 
     if (errors.length) {
         return { ok: false, errors };
@@ -271,16 +399,13 @@ export function validateBackup(backup) {
         ok: true,
         errors: [],
         data: {
-            // Rebuilt from known fields so nothing else in the file (e.g. a "__proto__" key) reaches app state.
-            settings: {
-                version: settings.version,
-                rates: { USD: settings.rates.USD, BRL: settings.rates.BRL, date: settings.rates.date, refreshedAt: settings.rates.refreshedAt },
-                categories: { expense: [...settings.categories.expense], income: [...settings.categories.income] },
-                assets: settings.assets.map(({ id, name, currency, archived }) => ({ id, name, currency, archived }))
-            },
+            settings: current ? rebuildSettings(settings) : migrateSettings(rebuildVersionOneSettings(settings)),
             transactions: backup.transactions.map(t => ({ ...t, date: new Date(t.date) })),
             balances: backup.balances,
-            closedMonths: backup.closedMonths
+            closedMonths: backup.closedMonths,
+            registeredRoom: current
+                ? backup.registeredRoom.map(({ year, account, person, room, contributed }) => ({ year, account, person, room, contributed }))
+                : []
         }
     };
 }
@@ -288,8 +413,11 @@ export function validateBackup(backup) {
 const counted = (count, word) => `${count.toLocaleString('en-CA')} ${word}${count === 1 ? '' : 's'}`;
 
 /** @returns {string} the restore confirmation summary for validated backup data */
-export function describeBackup({ transactions, settings, balances }) {
+export function describeBackup({ transactions, settings, balances, registeredRoom = [] }) {
     const months = counted(Object.keys(balances).length, 'month');
+    const room = registeredRoom.length
+        ? `, ${registeredRoom.length.toLocaleString('en-CA')} registered room ${registeredRoom.length === 1 ? 'entry' : 'entries'}`
+        : '';
 
-    return `${counted(transactions.length, 'transaction')}, ${counted(settings.assets.length, 'asset')}, ${months} of balances. This replaces all current data.`;
+    return `${counted(transactions.length, 'transaction')}, ${counted(settings.assets.length, 'asset')}, ${months} of balances${room}. This replaces all current data.`;
 }

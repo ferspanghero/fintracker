@@ -1,5 +1,6 @@
 // Shared setup for the Playwright specs. All data is synthetic.
 import { expect } from '@playwright/test';
+import { migrateSettings } from '../../js/settings.js';
 
 export const SAMPLE_CATEGORIES = {
     expense: ['Casa', 'Mercado', 'Alimentação', 'Lazer', 'Outro', 'Sem Categoria'],
@@ -8,13 +9,13 @@ export const SAMPLE_CATEGORIES = {
 
 export const NOW = new Date(2026, 9, 11, 12, 0);
 
+// Settings in the current stored format; assets get no Type, so they keep the names given here.
 export function makeSettings({ assets = [], rates = {}, categories = SAMPLE_CATEGORIES } = {}) {
-    return {
-        version: 1,
+    return migrateSettings({
         rates: { USD: null, BRL: null, date: null, refreshedAt: null, ...rates },
         categories: structuredClone(categories),
         assets: assets.map(([id, name, currency, archived = false]) => ({ id, name, currency, archived }))
-    };
+    });
 }
 
 // tx('2026-09-01', 'Rent', 100, 'expense', 'Casa') — the date is a local calendar day.
@@ -24,7 +25,7 @@ export const tx = (day, description, amount, type, category, account = 'TD') => 
  * Opens the app with a fixed clock and, unless `fresh`, seeded LocalStorage.
  * Seeding happens once per tab so reloads keep what the test changed.
  */
-export async function openApp(page, { settings, transactions = [], balances = {}, closedMonths = [], fresh = false } = {}) {
+export async function openApp(page, { settings, transactions = [], balances = {}, closedMonths = [], registeredRoom = [], fresh = false } = {}) {
     await page.clock.setFixedTime(NOW);
     await page.addInitScript(seed => {
         if (seed.fresh || sessionStorage.getItem('e2e-seeded')) {
@@ -40,8 +41,9 @@ export async function openApp(page, { settings, transactions = [], balances = {}
         localStorage.setItem('settings', JSON.stringify(seed.settings));
         localStorage.setItem('balances', JSON.stringify(seed.balances));
         localStorage.setItem('closedMonths', JSON.stringify(seed.closedMonths));
+        localStorage.setItem('registeredRoom', JSON.stringify(seed.registeredRoom));
         sessionStorage.setItem('e2e-seeded', '1');
-    }, { settings: settings ?? makeSettings(), transactions, balances, closedMonths, fresh });
+    }, { settings: settings ?? makeSettings(), transactions, balances, closedMonths, registeredRoom, fresh });
     await page.goto('/');
 }
 

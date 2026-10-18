@@ -26,21 +26,25 @@ Persist + Re-render (storage.js → ui.js)
 
 **State** (`state.js`) — mutable exports shared across the app, always updated in place (importers hold the references):
 - `transactions[]` — all transaction objects
-- `settings` — `{ version, rates, categories, assets }` (see Data Model)
+- `settings` — `{ version, rates, categories, assets, holdings, targets, fire }` (see Data Model)
 - `balances` — month-end asset balances
 - `closedMonths[]` — Balance Sheet months marked closed
+- `registeredRoom[]` — RRSP / TFSA room and contributions per year and person
 - `currentSort` — `{ field, direction }`
 - `currentFilter` — `{ dateRange, startDate, endDate, category, textFilter }`
-- `replaceAll(data)` — swaps in all four data collections (load and Restore)
+- `replaceAll(data)` — swaps in all the data collections (load and Restore)
 
 **Pure logic** (no DOM dependencies):
 - `category-engine.js` — keyword-based auto-categorization. Exposes `loadCategoryKeywords(path?)`, which merges generic keywords with optional personal overrides loaded from a gitignored file, and `categorizeTransaction(description, type, keywords)`, which scans a pre-built map. Holds no module-level state — callers (the UI layer and the benchmark tool) pass the path they want and hold the resulting map.
 - `ignore-rules.js` — import ignore list for transfers between your own accounts. Exposes `loadIgnorePrefixes(path?)`, which merges an optional `ignorePrefixes` export from the same gitignored personal file with generic bank-wording prefixes (trimmed, lowercased, blanks dropped), and `isIgnored(description, prefixes)`, a case-insensitive starts-with match on the whole description.
-- `utils.js` — CSV line tokenizer (handles quoting), currency conversion, local month/date keys, HTML escaping, reading a file as text.
+- `utils.js` — CSV line tokenizer (handles quoting), currency conversion, local month/date keys, number/money/percent formatting, HTML escaping, reading a file as text.
 - `constants.js` — literals shared across modules: transaction types and the base currency.
-- `settings.js` — rules for the settings object: add/remove categories (only unused ones, `Sem Categoria` is permanent), `ensureCategory` for write paths that bring categories from outside the app, add/rename/archive assets, set rates. Every mutator returns `{ ok }` or `{ ok: false, error }` with a user-facing message and changes nothing on failure.
+- `settings.js` — rules for the settings object: add/remove categories (only unused ones, `Sem Categoria` is permanent), `ensureCategory` for write paths that bring categories from outside the app, add/rename/archive assets and set their details (type, institution, owner, holding — a typed asset's name is generated from them), set rates, holdings' asset-class splits, the target allocation and the FIRE inputs. `migrateSettings` brings saved settings of any version to the current shape. Every mutator returns `{ ok }` or `{ ok: false, error }` with a user-facing message and changes nothing on failure.
 - `balance-sheet.js` — `buildYear(...)` derives one year of the Balance Sheet (month states, asset rows, net worth, income/expense rows with closed-month averages and the previous-year comparison, indicators) from data passed in, including `today`. Also the balance, Copy-previous and close/reopen helpers.
-- `backup.js` — backup envelope and `validateBackup`, which collects every problem before anything is applied.
+- `fire.js` — `buildFire(...)` derives the Investments & FIRE tab from data passed in, including `today`: FI portfolio (every asset minus its holding's cash share), FI number (spending ÷ (1 − withdrawal tax) ÷ SWR), progress and freedom days, the yearly projection (actual years are closed Decembers; open and projected years use the expected return minus inflation and a tax drag on the non-registered share), allocation against target, and holdings.
+- `registered-room.js` — RRSP / TFSA room rows per year (people come from the owners of registered assets), what is left, over-contribution warnings, and the value parser and validator.
+- `explanations.js` — the plain-language texts behind the hover balloons and `tip()`, which marks a term up as a focusable span described by its `role="tooltip"` balloon; `initTips()` wires Escape to hide balloons.
+- `backup.js` — backup envelope and `validateBackup`, which collects every problem before anything is applied and rebuilds the data from known fields only. Older backup versions still restore and are migrated.
 - `rates.js` — fetches and parses the latest Bank of Canada USD → CAD and BRL → CAD rates (injectable `fetch`, timeout).
 - `parsers/` — one module per bank format, each owning its own line splitting, date parsing, and field extraction. Connected via a registry (`parsers/index.js`).
 
@@ -51,33 +55,44 @@ Persist + Re-render (storage.js → ui.js)
 - `tabs.js` — tab bar; one panel visible at a time.
 - `modal.js` — shared dialog behaviour: open/close, focus moved in and returned, the page behind made inert, closing with ×, the backdrop or Escape (each close fires `modal-close`).
 - `balance-sheet-ui.js` — Balance Sheet tab: year selector, grid, inline balance editing (mouse or keyboard), close/reopen, Copy prev., indicators.
-- `settings-ui.js` — Settings tab: rates and refresh, category chips, assets table, Backup download and Restore.
+- `fire-ui.js` — Investments & FIRE tab: stats, progress, projection, allocation, holdings, the editable registered-room table (with its own year selector), assumptions.
+- `settings-ui.js` — Settings tab: rates and refresh, category chips, assets table with details, asset-class splits and targets, FIRE assumptions, Backup download and Restore.
 
 **Orchestration**:
 - `import-export.js` — CSV import pipeline (files read one at a time → parser registry → auto-categorization → ignore list → duplicate detection → state push) and CSV export.
 - `transactions.js` — CRUD, filtering, and `saveAndRefresh()` helper that persists to localStorage then re-renders.
 - `events.js` — wires all DOM event listeners.
-- `main.js` — bootstrap: sets defaults, loads localStorage, populates dropdowns, attaches listeners, wires the tabs. The Balance Sheet and Settings re-render when their tab opens.
+- `main.js` — bootstrap: sets defaults, loads localStorage, populates dropdowns, attaches listeners, wires the tabs. The Balance Sheet, Investments & FIRE and Settings tabs re-render when they open.
 
-**Persistence** (`storage.js`) — the only localStorage reader/writer. Keys: `transactions`, `settings`, `balances`, `closedMonths`. Dates are stored as ISO strings and rehydrated to `Date` objects on load. Missing keys load as a fresh install; loading never writes. `saveData()` writes every key; `saveBalanceSheet()` writes only `balances` and `closedMonths`, which is all the Balance Sheet grid changes. Both report whether the save succeeded.
+**Persistence** (`storage.js`) — the only localStorage reader/writer. Keys: `transactions`, `settings`, `balances`, `closedMonths`, `registeredRoom`. Settings pass through `migrateSettings` as they load. Dates are stored as ISO strings and rehydrated to `Date` objects on load. Missing keys load as a fresh install; loading never writes. `saveData()` writes every key; `saveBalanceSheet()` writes only `balances` and `closedMonths`, which is all the Balance Sheet grid changes; `saveRegisteredRoom()` writes only `registeredRoom`. All report whether the save succeeded.
 
 ## Data Model
 
 ```js
 // settings
 {
-  version: 1,
+  version: 2,
   rates: { USD: number | null, BRL: number | null, date: 'YYYY-MM-DD' | null, refreshedAt: ISO | null },
   categories: { expense: string[], income: string[] },   // each always contains 'Sem Categoria'
-  assets: [{ id, name, currency: 'CAD' | 'USD' | 'BRL', archived: boolean }]
+  assets: [{ id, name, currency: 'CAD' | 'USD' | 'BRL', archived: boolean,
+             type: string | null, institution: string, owner: string, holding: string }],   // type from ASSET_TYPES
+  holdings: [{ name, split: { [assetClass]: percent } }],   // shares add up to 100; matched to assets by holding, ignoring case
+  targets: { [assetClass]: percent } | {},   // a class left out has no target; 0 means none of it
+  fire: { swr, withdrawalTax, retirementSpending, expectedReturn, inflation,
+          nonRegTaxDrag, birthYear, projectionStart, projectionEnd }   // percentages as numbers (4 = 4%)
+          // null means "worked out from your data": spending = last 12 months; years = first year with balances → +20 years
 }
 // balances — native amounts in each asset's currency; an absent key is a blank cell
 { 'YYYY-MM': { [assetId]: number } }
 // closedMonths
 ['YYYY-MM', ...]
+// registeredRoom — CAD; one entry per year, account and person
+[{ year, account: 'RRSP' | 'TFSA', person, room: number | null, contributed: number | null }]
 ```
 
-A fresh install has only `Sem Categoria` in each category list, no assets, and no rates. Transaction categories always come from the Settings list: an imported row that is kept (not ignored, not a duplicate) adds its category if the list lacks it, and manual entries default to `Sem Categoria`. A backup is the four collections wrapped in `{ app: 'fintracker', version: 1, exportedAt, ... }`.
+Holdings and room entries are lists, so names typed by the user never become object keys.
+
+A fresh install has only `Sem Categoria` in each category list, no assets, and no rates. Transaction categories always come from the Settings list: an imported row that is kept (not ignored, not a duplicate) adds its category if the list lacks it, and manual entries default to `Sem Categoria`. A backup is the data collections wrapped in `{ app: 'fintracker', version: 2, exportedAt, ... }`; a version 1 backup restores with its settings migrated and no registered room.
 
 ## CSV Import Pipeline
 

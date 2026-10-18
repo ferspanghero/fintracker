@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { getFilteredTransactions, openAddTransactionModal, handleAddTransaction, updateTransactionField, deleteTransaction, deleteSelectedTransactions, confirmClearAll, saveAndRefresh } from '../js/transactions.js';
 import { getTransactionKey } from '../js/import-export.js';
+import { dateInputValue } from '../js/utils.js';
 import { renderTransactions } from '../js/ui.js';
 import { populateTransactionCategorySelect } from '../js/categories.js';
 import { transactions, currentFilter, currentSort } from '../js/state.js';
@@ -200,7 +201,7 @@ describe('openAddTransactionModal', () => {
 
     it('sets today as default date', () => {
         openAddTransactionModal();
-        const today = new Date().toISOString().split('T')[0];
+        const today = dateInputValue(new Date());
         expect(transactionDateInput.value).toBe(today);
     });
 

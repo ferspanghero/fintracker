@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { dateStrInputToLocalDate, parseCSVLine, BRLtoCAD, escapeHTML, monthKey, dateInputValue, readFileText } from '../js/utils.js';
+import { dateStrInputToLocalDate, parseCSVLine, BRLtoCAD, escapeHTML, monthKey, dateInputValue, readFileText, monthLabel, formatNumber, formatMoney, formatSignedPercent } from '../js/utils.js';
 
 describe('dateStrInputToLocalDate', () => {
     it('parses YYYY-MM-DD to local date', () => {
@@ -173,5 +173,21 @@ describe('readFileText', () => {
 
         // Act, Assert
         await expect(readFileText(new File([''], 'a.csv'))).rejects.toBe(failure);
+    });
+});
+
+describe('number and month formatting', () => {
+    it.each([
+        [() => monthLabel('2026-09'), 'Sep 2026'],
+        [() => formatNumber(1234.5, 2), '1,234.50'],
+        [() => formatMoney(1234.4), '$1,234'],
+        [() => formatMoney(-1234.4), '-$1,234'],
+        [() => formatMoney(0.456, 2), '$0.46'],
+        [() => formatSignedPercent(0.125), '+12.5%'],
+        [() => formatSignedPercent(-0.0004), '0.0%'],
+        [() => formatSignedPercent(null), '—']
+    ])('formats case %#', (format, expected) => {
+        // Act, Assert
+        expect(format()).toBe(expected);
     });
 });

@@ -7,30 +7,13 @@ import { transactions, balances, closedMonths, settings } from './state.js';
 import { bsYearSelect, bsGrid, bsRateNote, bsMessage, bsIndicatorsTitle, bsIndicators } from './dom.js';
 import { saveBalanceSheet } from './storage.js';
 import { buildYear, setBalance, copyPreviousMonth, toggleClosed, availableYears } from './balance-sheet.js';
-import { escapeHTML } from './utils.js';
+import { escapeHTML, MONTH_NAMES, formatNumber, formatMoney, monthLabel, formatSignedPercent as formatPercent } from './utils.js';
 import { UNCATEGORIZED } from './category-engine.js';
 import { BASE_CURRENCY } from './constants.js';
-
-const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 let selectedYear = null;
 // The balance being edited: { input, finish(commit, focusAfter) → whether it saved cleanly }.
 let activeEdit = null;
-
-const formatNumber = (value, decimals) =>
-    value.toLocaleString('en-CA', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
-const formatMoney = (value, decimals = 0) => `${value < 0 ? '-' : ''}$${formatNumber(Math.abs(value), decimals)}`;
-function formatPercent(ratio) {
-    if (ratio === null) {
-        return '—';
-    }
-
-    const rounded = Number((ratio * 100).toFixed(1));
-
-    // Rounding can leave "-0.0"; show an unchanged value without a sign.
-    return rounded === 0 ? '0.0%' : `${rounded > 0 ? '+' : ''}${rounded.toFixed(1)}%`;
-}
-const monthLabel = key => `${MONTH_NAMES[Number(key.slice(5)) - 1]} ${key.slice(0, 4)}`;
 
 function monthHeader(month, index) {
     const state = month.closed ? 'closed' : 'open';
