@@ -187,8 +187,15 @@ describe('categorizeTransaction', () => {
         expect(categorizeTransaction('SEPHORA', 'expense', kw)).toBe('Saúde');
     });
 
-    it('routes the abbreviated "sdm" drugstore descriptor to Saúde', () => {
-        expect(categorizeTransaction('SDM 2245             VANCOUVER', 'expense', kw)).toBe('Saúde');
+    it('routes Shoppers Drug Mart descriptors, including "sdm", to Mercado', () => {
+        expect(categorizeTransaction('SDM 9999             SENTINEL', 'expense', kw)).toBe('Mercado');
+        expect(categorizeTransaction('SHOPPERS DRUG MART #99   SENTINEL', 'expense', kw)).toBe('Mercado');
+        expect(categorizeTransaction('SHOPPERSDRUGMART9999 SENTINEL', 'expense', kw)).toBe('Mercado');
+        expect(categorizeTransaction('SHOPEPRS DRUG MART #999 SENTINEL', 'expense', kw)).toBe('Mercado');
+    });
+
+    it('still routes pharmacy descriptors to Saúde', () => {
+        expect(categorizeTransaction('SENTINEL PHARMACY', 'expense', kw)).toBe('Saúde');
     });
 
     it('routes the "haggen" supermarket descriptor to Mercado', () => {

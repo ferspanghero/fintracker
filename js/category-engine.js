@@ -44,13 +44,14 @@ const genericKeywords = {
             'terapia', 'physician', 'hospital', 'dental', 'dentist',
             'eye', 'prescription', 'medicine', 'healthcare',
             'drogaria', 'pharma', 'farmacia', 'counseling',
-            'cabeleireiro', 'shoppers', 'sdm', 'pague menos', 'sephora'
+            'cabeleireiro', 'pague menos', 'sephora'
         ],
         'Mercado': [
             'merc', 'grocery', 'market', 'supermarket', 'costco', 'safeway',
             'walmart', 'home depot', 'dollar tree', 'target', 'trader',
             'whole foods', 'aldi', 'kroger', 'publix', 'shoprite',
-            'dollar store', 'dollarama', 'haggen'
+            'dollar store', 'dollarama', 'haggen',
+            'shoppers', 'sdm', 'drug mart'
         ],
         'Telefone': [
             'telefone', 'phone', 'mobile', 'cellular', 'communication', 'skype'
