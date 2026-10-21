@@ -5,50 +5,34 @@
 //
 // Matching is trim + case-insensitive "starts with" on the whole description,
 // so list complete phrases: a bare 'payment' would swallow legitimate rows.
-// Generic bank wording lives here; anything identifying (your bank, account
-// nicknames) goes in the gitignored personal file's `ignorePrefixes` export.
+// The prefixes live only in the gitignored keywords file's `ignorePrefixes`
+// export; without it nothing is skipped.
 //
 // Assumption: both sides of a card payment are imported. Paying a card whose
 // statement you don't import makes that bank-side payment vanish from totals.
 
-export const genericIgnorePrefixes = Object.freeze([
-    'payment received - thank you',
-    'payment - thank you',
-    'internet bill payment mastercard',
-    'internet bill payment american express'
-]);
+import { importKeywordsFile } from './keywords-file.js';
 
 function normalize(text) {
     return text.trim().toLowerCase();
 }
 
 /**
- * Loads the ignore prefixes: the optional personal `ignorePrefixes` export
- * followed by the generic ones, all normalized, with blank and non-string
- * entries dropped (a blank prefix would match every row).
- * @param {string} [personalKeywordsPath] path to the personal keywords module,
- *   resolved relative to this file; a missing file or export is fine.
+ * Loads the ignore prefixes from the keywords module's `ignorePrefixes` export,
+ * normalized, with blank and non-string entries dropped (a blank prefix would
+ * match every row).
+ * @param {string} [keywordsPath] path to the keywords module, resolved
+ *   relative to `js/`; a missing file or export means no prefixes.
  * @returns {Promise<string[]>}
  */
-export async function loadIgnorePrefixes(personalKeywordsPath) {
-    let personalPrefixes = [];
+export async function loadIgnorePrefixes(keywordsPath) {
+    const mod = await importKeywordsFile(keywordsPath);
+    const prefixes = Array.isArray(mod.ignorePrefixes) ? mod.ignorePrefixes : [];
 
-    if (personalKeywordsPath) {
-        try {
-            const mod = await import(personalKeywordsPath);
-
-            if (Array.isArray(mod.ignorePrefixes)) personalPrefixes = mod.ignorePrefixes;
-        } catch {
-            // personal keywords file not present — generic prefixes only
-        }
-    }
-
-    const personal = personalPrefixes
+    return prefixes
         .filter(prefix => typeof prefix === 'string')
         .map(normalize)
         .filter(Boolean);
-
-    return [...personal, ...genericIgnorePrefixes];
 }
 
 /**

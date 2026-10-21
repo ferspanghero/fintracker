@@ -1,22 +1,10 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import {
     loadCategoryKeywords,
     categorizeTransaction,
     restrictKeywords,
     UNCATEGORIZED
 } from '../js/category-engine.js';
-import { SAMPLE_CATEGORIES } from './fixtures/sample-categories.js';
-
-describe('keyword catalog', () => {
-    it('omits the retired Internet and Curso expense categories', async () => {
-        // Act
-        const kw = await loadCategoryKeywords();
-
-        // Assert
-        expect(Object.keys(kw.expense)).not.toContain('Internet');
-        expect(Object.keys(kw.expense)).not.toContain('Curso');
-    });
-});
 
 describe('restrictKeywords', () => {
     const catalog = {
@@ -58,6 +46,12 @@ describe('restrictKeywords', () => {
         expect(categorizeTransaction('COSTCO TRAVEL', 'expense', restricted)).toBe('Mercado');
     });
 
+    it('tolerates a keyword map that has no entry for a type', () => {
+        // Act, Assert
+        expect(restrictKeywords({ expense: { Casa: ['home'] } }, { expense: ['Casa'], income: ['Trabalho'] }))
+            .toEqual({ expense: { Casa: ['home'] }, income: {} });
+    });
+
     it('tolerates a missing type in the allowed list', () => {
         // Act, Assert
         expect(restrictKeywords(catalog, { expense: ['Casa'] })).toEqual({ expense: { Casa: ['home'] }, income: {} });
@@ -65,168 +59,114 @@ describe('restrictKeywords', () => {
 });
 
 describe('loadCategoryKeywords', () => {
-    it('returns only generic keywords when no path is supplied', async () => {
-        const kw = await loadCategoryKeywords();
-        expect(kw.expense.Mercado).toContain('costco');
-        expect(kw.income.Trabalho).toContain('payroll');
-        expect(kw.expense.Casa).not.toContain('zzsentinelcasazz');
+    it('returns no keywords when no path is given', async () => {
+        // Act, Assert
+        expect(await loadCategoryKeywords()).toEqual({ expense: {}, income: {} });
     });
 
-    it('falls back to generic keywords when path points to a nonexistent file', async () => {
-        const kw = await loadCategoryKeywords('./definitely-not-present-xyz.js');
-        expect(kw.expense.Mercado).toContain('costco');
-        expect(kw.expense.Casa).not.toContain('zzsentinelcasazz');
+    it('returns no keywords when the file is missing', async () => {
+        // Act, Assert
+        expect(await loadCategoryKeywords('./definitely-not-present-xyz.js')).toEqual({ expense: {}, income: {} });
     });
 
-    it('falls back to generic keywords when target module lacks a personalKeywords export', async () => {
-        const kw = await loadCategoryKeywords('../tests/fixtures/empty-personal-keywords.js');
-        expect(kw.expense.Mercado).toContain('costco');
-        expect(kw.expense.Casa).not.toContain('zzsentinelcasazz');
+    it('returns no keywords when the file has no personalKeywords export', async () => {
+        // Act, Assert
+        expect(await loadCategoryKeywords('../tests/fixtures/empty-personal-keywords.js')).toEqual({ expense: {}, income: {} });
     });
 
-    it('loads and prepends personal overrides when path points to a real file', async () => {
-        const kw = await loadCategoryKeywords('../tests/fixtures/test-personal-keywords.js');
-        expect(kw.expense.Casa[0]).toBe('zzsentinelcasazz');
-        expect(kw.expense.Mercado[0]).toBe('zzsentinelmercadozz');
-        expect(kw.income.Trabalho[0]).toBe('zzsentineltrabalhozz');
-        // Generics still follow personal entries.
-        expect(kw.expense.Mercado).toContain('costco');
-    });
-
-    it('the sample test categories cover every catalog category', async () => {
+    it('returns the file\'s keywords with categories in the order they are declared', async () => {
         // Act
-        const kw = await loadCategoryKeywords();
+        const kw = await loadCategoryKeywords('../tests/fixtures/test-personal-keywords.js');
 
         // Assert
-        Object.keys(kw.expense).forEach(key => expect(SAMPLE_CATEGORIES.expense).toContain(key));
-        Object.keys(kw.income).forEach(key => expect(SAMPLE_CATEGORIES.income).toContain(key));
+        expect(kw).toEqual({
+            expense: { Casa: ['zzsentinelcasazz'], Mercado: ['zzsentinelmercadozz'] },
+            income: { Trabalho: ['zzsentineltrabalhozz'] }
+        });
+        expect(Object.keys(kw.expense)).toEqual(['Casa', 'Mercado']);
+    });
+
+    it('returns no keywords when the file is broken', async () => {
+        // Arrange
+        vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+        // Act, Assert
+        expect(await loadCategoryKeywords('../tests/fixtures/broken-keywords.js')).toEqual({ expense: {}, income: {} });
+    });
+
+    it('lowercases and trims keywords, dropping blank and non-string entries', async () => {
+        // Act
+        const kw = await loadCategoryKeywords('../tests/fixtures/messy-keywords.js');
+
+        // Assert
+        expect(kw.expense.Lazer).toEqual(['zzsentinellazerzz']);
+    });
+
+    it('treats a type the file leaves out as having no keywords', async () => {
+        // Act
+        const kw = await loadCategoryKeywords('../tests/fixtures/expense-only-keywords.js');
+
+        // Assert
+        expect(kw).toEqual({ expense: { Lazer: ['zzsentinellazerzz'] }, income: {} });
     });
 });
 
 describe('categorizeTransaction', () => {
-    let kw;
+    // Mercado is declared before Alimentação, so it wins descriptions both match.
+    const kw = {
+        expense: { Viagem: ['hotel'], Mercado: ['market'], Alimentação: ['food', 'cafe'], Lazer: ['netflix'] },
+        income: { Trabalho: ['payroll'], Reembolso: ['refund'] }
+    };
 
-    beforeAll(async () => {
-        kw = await loadCategoryKeywords();
+    it('matches an expense keyword anywhere in the description', () => {
+        // Act, Assert
+        expect(categorizeTransaction('SENTINEL HOTEL DOWNTOWN', 'expense', kw)).toBe('Viagem');
     });
 
-    it('matches expense keyword via substring', () => {
-        expect(categorizeTransaction('COSTCO WHOLESALE', 'expense', kw)).toBe('Mercado');
-    });
-
-    it('matches income keyword', () => {
+    it('matches an income keyword', () => {
+        // Act, Assert
         expect(categorizeTransaction('PAYROLL DEPOSIT', 'income', kw)).toBe('Trabalho');
     });
 
-    it('returns Sem Categoria for unknown description', () => {
+    it('ignores case', () => {
+        // Act, Assert
+        expect(categorizeTransaction('Netflix', 'expense', kw)).toBe('Lazer');
+    });
+
+    it('gives a description matching two categories to the one declared first', () => {
+        // Act, Assert
+        expect(categorizeTransaction('SENTINEL FOOD MARKET', 'expense', kw)).toBe('Mercado');
+    });
+
+    it('returns Sem Categoria for a description matching no keyword', () => {
+        // Act, Assert
         expect(categorizeTransaction('xyzzy123unknown', 'expense', kw)).toBe(UNCATEGORIZED);
         expect(categorizeTransaction('xyzzy123unknown', 'income', kw)).toBe(UNCATEGORIZED);
     });
 
-    it('is case insensitive', () => {
-        expect(categorizeTransaction('NETFLIX', 'expense', kw)).toBe('Lazer');
-        expect(categorizeTransaction('netflix', 'expense', kw)).toBe('Lazer');
+    it('falls back to Reembolso for income that only matches an expense keyword', () => {
+        // Act, Assert
+        expect(categorizeTransaction('SENTINEL CAFE', 'income', kw)).toBe('Reembolso');
     });
 
-    it('falls back to Reembolso for income matching expense keywords', () => {
-        // "costco" matches Mercado expense keyword but no income keyword
-        expect(categorizeTransaction('COSTCO WHOLESALE', 'income', kw)).toBe('Reembolso');
+    it('prefers an income keyword over the Reembolso fallback', () => {
+        // Act, Assert
+        expect(categorizeTransaction('PAYROLL SENTINEL CAFE', 'income', kw)).toBe('Trabalho');
     });
 
-    it('returns Sem Categoria for invalid type instead of crashing', () => {
+    it('returns Sem Categoria for an unknown type instead of crashing', () => {
+        // Act, Assert
         expect(categorizeTransaction('anything', 'badtype', kw)).toBe(UNCATEGORIZED);
     });
 
-    it('returns Sem Categoria when keywords argument is missing', () => {
+    it('returns Sem Categoria when the keyword map is missing', () => {
+        // Act, Assert
         expect(categorizeTransaction('anything', 'expense')).toBe(UNCATEGORIZED);
     });
 
-    it('personal overrides win under first-match-wins', async () => {
-        const merged = await loadCategoryKeywords('../tests/fixtures/test-personal-keywords.js');
-        expect(categorizeTransaction('zzsentinelcasazz payment', 'expense', merged)).toBe('Casa');
-    });
-
-    it('routes the abbreviated "amzn" descriptor to Outro', () => {
-        expect(categorizeTransaction('AMZN MKTP CA', 'expense', kw)).toBe('Outro');
-    });
-
-    it('treats an amzn refund as Reembolso via the income fallback', () => {
-        expect(categorizeTransaction('AMZN MKTP CA', 'income', kw)).toBe('Reembolso');
-    });
-
-    it('matches steakhouse, bagel, and wine descriptions as Alimentação', () => {
-        expect(categorizeTransaction('THE STEAKHOUSE', 'expense', kw)).toBe('Alimentação');
-        expect(categorizeTransaction('BAGEL SHOP', 'expense', kw)).toBe('Alimentação');
-        expect(categorizeTransaction('WINE SHOP', 'expense', kw)).toBe('Alimentação');
-    });
-
-    it('matches vineyard descriptions as Alimentação', () => {
-        expect(categorizeTransaction('SENTINEL VINEYARDS', 'expense', kw)).toBe('Alimentação');
-    });
-
-    it('does not categorize bare "online" descriptions', () => {
-        expect(categorizeTransaction('ONLINE PURCHASE', 'expense', kw)).toBe(UNCATEGORIZED);
-    });
-
-    it('routes internet bills to Casa', () => {
-        expect(categorizeTransaction('INTERNET BILL PAYMENT SENTINEL', 'expense', kw)).toBe('Casa');
-    });
-
-    it('routes course and training descriptions to Educação', () => {
-        expect(categorizeTransaction('SENTINEL ONLINE COURSE', 'expense', kw)).toBe('Educação');
-        expect(categorizeTransaction('SENTINEL TRAINING CENTRE', 'expense', kw)).toBe('Educação');
-    });
-
-    it('does not route "water" or "network" descriptions to Casa', () => {
-        expect(categorizeTransaction('SENTINEL WATER ST CAFE', 'expense', kw)).toBe('Alimentação');
-        expect(categorizeTransaction('PLAYSTATION NETWORK', 'expense', kw)).toBe('Lazer');
-        expect(categorizeTransaction('SENTINEL WATERFRONT', 'expense', kw)).not.toBe('Casa');
-    });
-
-    it('routes "sephora" to Saúde rather than matching the "pho" substring', () => {
-        expect(categorizeTransaction('SEPHORA', 'expense', kw)).toBe('Saúde');
-    });
-
-    it('routes Shoppers Drug Mart descriptors, including "sdm", to Mercado', () => {
-        expect(categorizeTransaction('SDM 9999             SENTINEL', 'expense', kw)).toBe('Mercado');
-        expect(categorizeTransaction('SHOPPERS DRUG MART #99   SENTINEL', 'expense', kw)).toBe('Mercado');
-        expect(categorizeTransaction('SHOPPERSDRUGMART9999 SENTINEL', 'expense', kw)).toBe('Mercado');
-        expect(categorizeTransaction('SHOPEPRS DRUG MART #999 SENTINEL', 'expense', kw)).toBe('Mercado');
-    });
-
-    it('still routes pharmacy descriptors to Saúde', () => {
-        expect(categorizeTransaction('SENTINEL PHARMACY', 'expense', kw)).toBe('Saúde');
-    });
-
-    it('routes the "haggen" supermarket descriptor to Mercado', () => {
-        expect(categorizeTransaction('HAGGEN 3493', 'expense', kw)).toBe('Mercado');
-    });
-
-    it('still routes a "holiday inn" descriptor to Viagem', () => {
-        expect(categorizeTransaction('HOLIDAY INN VANCOUVER', 'expense', kw)).toBe('Viagem');
-    });
-
-    it('leaves a generic "holidays" descriptor uncategorized for personal keywords to claim', () => {
-        expect(categorizeTransaction('SEASONAL HOLIDAYS SHOP', 'expense', kw)).toBe(UNCATEGORIZED);
-    });
-});
-
-describe('categorizeTransaction with personal overrides that outrank generics', () => {
-    let merged;
-
-    beforeAll(async () => {
-        merged = await loadCategoryKeywords('../tests/fixtures/routing-personal-keywords.js');
-    });
-
-    it('lets a personal Mercado entry win over the generic "food" keyword', () => {
-        expect(categorizeTransaction('ZZSENTINELFOODZZ STORE', 'expense', merged)).toBe('Mercado');
-    });
-
-    it('lets a personal Alimentação entry claim a "holidays" descriptor', () => {
-        expect(categorizeTransaction('SQ *ZZSENTINELHOLIDAYSZZ', 'expense', merged)).toBe('Alimentação');
-    });
-
-    it('routes an amazon deposit to Reembolso rather than Trabalho', () => {
-        expect(categorizeTransaction('AMAZON.CA               866-216-1072', 'income', merged)).toBe('Reembolso');
+    it('returns Sem Categoria for everything when the map is empty', () => {
+        // Act, Assert
+        expect(categorizeTransaction('SENTINEL HOTEL', 'expense', { expense: {}, income: {} })).toBe(UNCATEGORIZED);
+        expect(categorizeTransaction('SENTINEL HOTEL', 'income', { expense: {}, income: {} })).toBe(UNCATEGORIZED);
     });
 });

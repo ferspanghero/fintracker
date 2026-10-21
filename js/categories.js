@@ -9,8 +9,8 @@ import {
 } from './category-engine.js';
 
 // Path (resolved relative to the js/ loaders: category-engine.js and
-// ignore-rules.js) to the optional gitignored personal-keyword overrides.
-// Missing file is fine — loaders fall back to generic entries only.
+// ignore-rules.js) to the gitignored keywords file. A missing file is fine:
+// nothing is auto-categorized or ignored.
 export const PERSONAL_KEYWORDS_PATH = './personal-keywords.js';
 
 // `await` at the top level of a module (top-level await) is intentional here.

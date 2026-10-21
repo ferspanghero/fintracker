@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { genericIgnorePrefixes, loadIgnorePrefixes, isIgnored } from '../js/ignore-rules.js';
+import { loadIgnorePrefixes, isIgnored } from '../js/ignore-rules.js';
 
 describe('isIgnored', () => {
     const prefixes = ['card payment - thank you'];
@@ -37,53 +37,27 @@ describe('isIgnored', () => {
     });
 });
 
-describe('genericIgnorePrefixes', () => {
-    it('stores entries already trimmed and lowercased', () => {
-        for (const prefix of genericIgnorePrefixes) {
-            expect(prefix).toBe(prefix.trim().toLowerCase());
-            expect(prefix).not.toBe('');
-        }
-    });
-
-    it.each([
-        'PAYMENT RECEIVED - THANK YOU',
-        'PAYMENT - THANK YOU',
-        'INTERNET BILL PAYMENT MASTERCARD SENTINEL ISSUER',
-        'INTERNET BILL PAYMENT AMERICAN EXPRESS SENTINEL'
-    ])('ignores the card-payment row "%s"', (description) => {
-        expect(isIgnored(description, genericIgnorePrefixes)).toBe(true);
-    });
-
-    it.each([
-        'INTERNET BILL PAYMENT SENTINEL UTILITY',
-        'INTERNET BILL PAYMENT SENTINEL CITY TAX',
-        'THANK YOU CAFE',
-        'PAYMENT PLAN FEE'
-    ])('keeps the legitimate row "%s"', (description) => {
-        expect(isIgnored(description, genericIgnorePrefixes)).toBe(false);
-    });
-});
-
 describe('loadIgnorePrefixes', () => {
-    it('returns only the generic prefixes when no path is given', async () => {
-        expect(await loadIgnorePrefixes()).toEqual(genericIgnorePrefixes);
+    it('returns no prefixes when no path is given', async () => {
+        // Act, Assert
+        expect(await loadIgnorePrefixes()).toEqual([]);
     });
 
-    it('returns only the generic prefixes when the personal file is missing', async () => {
-        expect(await loadIgnorePrefixes('./definitely-not-present-xyz.js')).toEqual(genericIgnorePrefixes);
+    it('returns no prefixes when the file is missing', async () => {
+        // Act, Assert
+        expect(await loadIgnorePrefixes('./definitely-not-present-xyz.js')).toEqual([]);
     });
 
-    it('returns only the generic prefixes when the personal file has no ignorePrefixes export', async () => {
-        expect(await loadIgnorePrefixes('../tests/fixtures/empty-personal-keywords.js')).toEqual(genericIgnorePrefixes);
+    it('returns no prefixes when the file has no ignorePrefixes export', async () => {
+        // Act, Assert
+        expect(await loadIgnorePrefixes('../tests/fixtures/empty-personal-keywords.js')).toEqual([]);
     });
 
-    it('merges normalized personal prefixes and drops blank and non-string entries', async () => {
+    it('normalizes the file\'s prefixes and drops blank and non-string entries', async () => {
+        // Act
         const prefixes = await loadIgnorePrefixes('../tests/fixtures/ignore-personal-keywords.js');
 
-        expect(prefixes).toEqual([
-            'sentinel transfer',
-            'sentinel card payment',
-            ...genericIgnorePrefixes
-        ]);
+        // Assert
+        expect(prefixes).toEqual(['sentinel transfer', 'sentinel card payment']);
     });
 });

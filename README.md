@@ -7,14 +7,14 @@ Personal finance tracker that imports bank CSVs, auto-categorizes transactions, 
 The page has four tabs: **Transactions**, **Balance Sheet**, **Investments & FIRE**, and **Settings**.
 
 - **Multi-bank CSV import** with automatic format detection and a per-month summary of what was added
-- **Auto-categorization** of transactions based on description keywords
+- **Auto-categorization** of transactions based on description keywords you keep in a gitignored keywords file
 - Filter by date range (including any single year), category, or free text search
 - Financial summary (income, expenses, net balance)
 - Manual transaction entry with custom categories
 - Export filtered transactions to CSV
 - Bulk select and delete transactions
 - Duplicate detection across imports
-- Import ignore list for transfers between your own accounts (e.g. card payments), with optional private entries in the gitignored personal keywords file
+- Import ignore list for transfers between your own accounts (e.g. card payments), kept in the same gitignored keywords file
 - **Balance Sheet** per year: month-end asset balances (entered by hand in a spreadsheet-style grid — arrow keys, type to edit, Delete to clear — each in its asset's currency), net worth in CAD, income and one row per expense category, averages over closed months compared with the previous year, and yearly indicators (net worth change, saving rate, investment returns)
 - **Close / Reopen** a Balance Sheet month to mark it reviewed and count it in the averages; imports are never affected
 - **Investments & FIRE**, built from the latest balances and the last 12 months of transactions: FI portfolio, FI number (spending grossed up for withdrawal tax ÷ your safe withdrawal rate), SWR today, freedom days and freedom calendar, a yearly projection to the FI year (closed Decembers as actual years, later years in today's dollars with a deliberately conservative tax drag on non-registered growth), allocation drift against target per asset class, holdings, and RRSP / TFSA room per person and year with over-contribution warnings. Every term has a hover explanation.
@@ -46,6 +46,8 @@ npx serve . -l 3000
 Open http://localhost:3000. Data persists in localStorage across sessions.
 
 A fresh install starts with only the `Sem Categoria` category, no assets, and no exchange rates: add categories, assets, and rates in **Settings** (or restore a backup) before importing. Bradesco imports need the BRL → CAD rate.
+
+Auto-categorization and the import ignore list read from `js/personal-keywords.js`, which is gitignored and never committed. Copy `js/personal-keywords.example.js` to that name and fill it in; without it, imported rows land in `Sem Categoria` and nothing is skipped.
 
 ## Tests
 
@@ -97,10 +99,11 @@ js/
   dom.js              # DOM element references
   utils.js            # CSV line parsing, BRL-to-CAD conversion, local month keys, number formatting, HTML escaping, file reading
   constants.js        # shared literals: transaction types, base currency
-  category-engine.js  # generic category keywords, auto-categorization logic (no DOM deps)
-  personal-keywords.example.js  # template for optional gitignored personal-keywords.js
+  category-engine.js  # keyword loader and auto-categorization logic (no DOM deps)
+  keywords-file.js    # imports the gitignored keywords file (missing is fine, broken is reported)
+  personal-keywords.example.js  # template for the gitignored personal-keywords.js (keywords + ignore list)
   categories.js       # loads keyword map, wraps categorizer, category dropdowns, UI handlers
-  ignore-rules.js     # import ignore list: generic + personal prefixes, starts-with matcher (no DOM deps)
+  ignore-rules.js     # import ignore list: prefix loader, starts-with matcher (no DOM deps)
   storage.js          # LocalStorage load/save
   settings.js         # rules for rates, categories, assets, asset-class splits and FIRE inputs; settings migration (no DOM deps)
   settings-ui.js      # Settings tab, Backup / Restore

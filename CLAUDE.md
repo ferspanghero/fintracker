@@ -20,10 +20,11 @@ No linter or build step is configured — don't invent one.
 ## Key files
 
 ```
-js/category-engine.js   # pure categorization: keyword map + matcher, no DOM deps
-js/personal-keywords.js # gitignored local overrides (template: personal-keywords.example.js)
-js/categories.js        # loads the merged keyword map, wraps the categorizer, drives dropdowns
-js/ignore-rules.js      # import ignore list: generic prefixes, personal-file loader, matcher
+js/category-engine.js   # pure categorization: keyword loader + matcher, no DOM deps
+js/personal-keywords.js # gitignored: every category keyword + the ignore list (template: personal-keywords.example.js)
+js/keywords-file.js     # imports that file for both loaders: missing → empty, broken → console.warn + empty
+js/categories.js        # loads the keyword map, wraps the categorizer, drives dropdowns
+js/ignore-rules.js      # import ignore list: prefix loader + matcher
 js/settings.js          # pure rules for rates, the category list, assets, class splits, FIRE inputs; migrateSettings
 js/balance-sheet.js     # pure Balance Sheet model (buildYear + balance helpers)
 js/fire.js              # pure Investments & FIRE model (buildFire: FI stats, projection, allocation)
@@ -34,7 +35,7 @@ js/constants.js         # shared literals (transaction types, base currency) —
 js/modal.js             # every dialog opens and closes through openModal / closeModal
 js/*-ui.js              # tab rendering/wiring for Balance Sheet, Investments & FIRE, and Settings
 js/parsers/             # one module per bank format + a registry
-tests/                  # mirrors js/; fixtures/ holds injectable module fixtures
+tests/                  # mirrors js/; fixtures/ holds injectable module fixtures, incl. app-keywords.js (stand-in keywords file)
 tests/e2e/              # Playwright specs, shared helpers, static test server
 tools/category-benchmark/
 ```
@@ -43,10 +44,11 @@ tools/category-benchmark/
 
 - **Tests are the gate.** Vitest + jsdom, coverage thresholds in `vitest.config.js` (statements/lines/functions 90, branches 85). Cover both branches by **injecting fixtures**, never by renaming or deleting real files.
 - **`js/categories.js` and `js/import-export.js` use top-level `await`** (personal keywords, ignore prefixes), so module evaluation can finish after `DOMContentLoaded`. `js/main.js` handles that with a `document.readyState` register-or-run branch — keep them in sync if any changes.
-- **Nothing personal gets committed.** `js/personal-keywords.js` and `resources/` are gitignored. Local merchant names, banks, and raw statement data stay out of tracked files — including tests, which use sentinel strings instead.
+- **Nothing personal gets committed.** `js/personal-keywords.js` and `resources/` are gitignored. Keywords, ignore prefixes, merchant names, banks, and raw statement data stay out of tracked files — including tests, which use sentinel strings or generic words instead.
 - **Auto-detect sees only the file's first line**, lowercased, trimmed, and with double quotes stripped — write `detect()` against that bare text. If a bank export opens with a title or preamble row, the parser's `detect()` must recognize that row, or the file silently falls through to the TD fallback. `hasHeader` skips only line 0, so `parseLine` must return `null` for any further header or metadata rows.
 - **Income vs expense comes from the amount's sign or debit/credit columns, never a bank's type label** — labels miss refunds and other credits (see the parser contract in `project_files/overview.md`).
-- A fresh clone works with zero config: a missing personal-keywords file falls back to generic keywords only.
+- **All keywords are private.** `js/personal-keywords.js` is the only source of category keywords and ignore prefixes; there is no public catalog. A fresh clone runs with zero config but categorizes nothing (`Sem Categoria`) and skips nothing.
+- **Tests never read the real keywords file.** `vitest.config.js` aliases the app's import of it to `tests/fixtures/app-keywords.js`, and the E2E server serves that stand-in in its place. A test that needs a keyword the app uses adds it to the stand-in; engine and loader tests pass their own fixture paths.
 - **State is mutated in place.** `state.js` exports are shared references; update them (or call `replaceAll`) — never reassign. `storage.js` is the only LocalStorage reader/writer; loading never writes.
 - **Keep pure modules pure.** `settings.js`, `balance-sheet.js`, `fire.js`, `registered-room.js`, `backup.js`, `rates.js`, `category-engine.js` take data (and `today`/`now`/`fetch`) as arguments; DOM work lives in the UI modules.
 - **Every stored transaction category must exist in `settings.categories` for its type** — otherwise the app's own Backup fails `validateBackup`. Any new write path must add the category through `settings.js` (`ensureCategory`) or fall back to `Sem Categoria`; imports do this only for rows they keep.
@@ -60,15 +62,15 @@ tools/category-benchmark/
 - **Month keys use local time** (`monthKey`, `dateInputValue` in `utils.js`), never `toISOString()`. Exception: `getTransactionKey` keeps its UTC date — changing it breaks duplicate detection against stored data.
 - **Parsers receive a context:** `parseLine(line, { rates })`; a parser that can't work without it implements `validateContext` to refuse the whole file.
 - **Unit tests start with a sample category list** (`tests/fixtures/sample-categories.js`), and the DOM fixture is read from `index.html` — new element ids only need adding to `index.html` and `dom.js`.
-- **E2E specs use synthetic data only**, a fixed clock, and a mocked Bank of Canada (`tests/e2e/helpers.js`; `makeSettings` returns current-format settings). The test server serves only `index.html`, `styles.css`, and `js/` (never personal keywords). `@playwright/test` is pinned to the version matching the locally cached browsers — don't bump it without checking the browser builds.
+- **E2E specs use synthetic data only**, a fixed clock, and a mocked Bank of Canada (`tests/e2e/helpers.js`; `makeSettings` returns current-format settings). The test server serves only `index.html`, `styles.css`, and `js/`, with the stand-in in place of the private keywords file. `@playwright/test` is pinned to the version matching the locally cached browsers — don't bump it without checking the browser builds.
 
 ## Categorization rules
 
-The matcher is **case-insensitive substring, first match wins**, scanning categories in the order they are declared in `genericKeywords`, then keywords within each category.
+The matcher is **case-insensitive substring, first match wins**, scanning categories in the order they are declared in `js/personal-keywords.js`, then keywords within each category.
 
 - **Category declaration order decides cross-category ties.** A keyword in an earlier category beats one in a later category regardless of specificity — an over-broad word high in the list silently claims descriptions meant for a category below it. Prefer the narrowest keyword that still matches (`holiday inn`, not `holiday`).
-- **Personal keywords are prepended per category**, so they win *within* a category — but they cannot outrank an earlier category. Placing a merchant in the right category matters more than adding the keyword.
-- **Where a keyword belongs:** concepts and well-known brands → `js/category-engine.js`; local merchants, banks, and anything identifying → the gitignored personal file.
+- **Placing a merchant in the right category matters more than adding the keyword.** A keyword can't outrank one in an earlier category; reordering categories changes routes across the whole history.
+- **Check keyword edits against the user's data before keeping them.** Run the benchmark (and, when available, a row-by-row diff over the full backup) and treat any row that was right and now isn't as a regression.
 - **Income falls back to `Reembolso`** when a description matches no income keyword but does match an expense keyword — a refund of a purchase, not new income. Don't add merchant names to `income.Trabalho` to force a route; that turns every refund from that merchant into salary.
 - Category names are Brazilian Portuguese (user data); all UI text is English. The user's category list lives in `settings.categories`; the keyword map is a catalog, narrowed to that list at call time, so a route to a category the user doesn't have falls through to the next match.
 
@@ -77,5 +79,5 @@ The matcher is **case-insensitive substring, first match wins**, scanning catego
 Imported rows whose description, trimmed and lowercased, **starts with** an ignore prefix are skipped and counted (before the duplicate check). Meant for money moving between the user's own accounts — card payments, savings transfers — which otherwise land twice.
 
 - **Use complete phrases, never bare words.** A starts-with match on `payment` would drop legitimate rows.
-- **Where a prefix belongs:** standard bank wording → `genericIgnorePrefixes` in `js/ignore-rules.js`; anything naming the user's bank, issuer, or accounts → the personal file's `ignorePrefixes` export.
+- **Every prefix lives in the private file's `ignorePrefixes` export**, standard bank wording included.
 - Match against the description **as parsed** (e.g. the Mastercard parser appends ` (CARDHOLDER)`), which a prefix naturally tolerates.

@@ -1,13 +1,14 @@
-// Personal keyword overrides — template file.
+// Category keywords and import ignore list — template file.
 //
-// Copy this to `personal-keywords.js` (gitignored) and add your own keywords.
-// Anything you put here is prepended to the generic keyword lists in
-// category-engine.js, so it wins under first-match-wins. This is where
-// merchant names, banks, local stores, and anything else you don't want
-// in a public repo should live.
+// Copy this to `personal-keywords.js` (gitignored) and fill it in. It is the
+// app's only source of keywords: without it every imported row lands in
+// Sem Categoria and nothing is skipped.
 //
-// Structure mirrors categoryKeywords in category-engine.js. Categories you
-// don't care about can be left as empty arrays or omitted entirely.
+// Matching is case-insensitive substring, first match wins: categories are
+// scanned in the order declared below, then keywords within each. A keyword in
+// an earlier category beats one in a later category, so prefer narrow phrases
+// (`holiday inn`, not `holiday`). Write keywords in lowercase. Categories you
+// don't use can stay empty or be left out.
 
 export const personalKeywords = {
     expense: {
@@ -37,6 +38,6 @@ export const personalKeywords = {
 
 // Import ignore list: rows whose description STARTS WITH one of these phrases
 // (trimmed, case-insensitive) are skipped on import, like duplicates. Use it
-// for money moving between your own accounts. Write complete phrases — see
-// ignore-rules.js for the generic ones and why.
+// for money moving between your own accounts. Write complete phrases: a bare
+// 'payment' would skip legitimate rows.
 export const ignorePrefixes = [];

@@ -1,174 +1,42 @@
-// Pure categorization data and logic — no DOM dependencies, no module-level
-// state. Consumers call `loadCategoryKeywords(path?)` to obtain a merged
-// keyword map, then pass it to `categorizeTransaction(desc, type, keywords)`.
+// Pure categorization logic — no DOM dependencies, no module-level state.
+// Consumers call `loadCategoryKeywords(path)` to obtain the keyword map, then
+// pass it to `categorizeTransaction(desc, type, keywords)`.
 //
-// This file contains only generic keywords (concepts + well-known global brands).
-// Personal/local merchants, banks, and anything else that would leak private
-// information live in a gitignored file whose path the caller passes in.
-// A committed `personal-keywords.example.js` is provided as a template.
+// The keywords themselves live only in a gitignored file whose path the caller
+// passes in; `personal-keywords.example.js` is the committed template.
 
 import { INCOME, EXPENSE, TRANSACTION_TYPES } from './constants.js';
+import { importKeywordsFile } from './keywords-file.js';
 
 export const UNCATEGORIZED = 'Sem Categoria';
 /** Where an income row that only matches expense keywords goes: a refund of a purchase. */
 export const REFUND_CATEGORY = 'Reembolso';
 
-// Generic keywords — concepts and well-known global brands only.
-const genericKeywords = {
-    expense: {
-        'Viagem': [
-            'viagem', 'travel', 'vacation', 'journey',
-            'hotel', 'flight', 'booking', 'airbnb', 'expedia',
-            'cruise', 'motel', 'lodging', 'accommodation', 'airline',
-            'holiday inn', 'tour', 'resort', 'marriott',
-            'empreend', 'turi', 'pix', 'airalo', 'priority pass',
-            'aircanada', 'air can', 'localiza'
-        ],
-        'Casa': [
-            'home', 'mortgage', 'property', 'utility', 'insurance',
-            'apartment', 'condo', 'real estate', 'housing',
-            'repair', 'improvement', 'furniture',
-            'hydro', 'handyman', 'winners', 'canadian tire',
-            'internet', 'service provider'
-        ],
-        'Tarifa': [
-            'tarifa', 'membership', 'annual', 'penalty', 'overdraft', 'tax',
-            'adjusted cost base', 'adjustedcostbase', 'doc/ted'
-        ],
-        'Dívida': [
-            'dívida', 'debt', 'bill', 'plano de saúde', 'student loan'
-        ],
-        'Saúde': [
-            'saúde', 'health', 'medical', 'doctor', 'pharmacy',
-            'clinic', 'therapy', 'wellness', 'exames', 'consulta',
-            'terapia', 'physician', 'hospital', 'dental', 'dentist',
-            'eye', 'prescription', 'medicine', 'healthcare',
-            'drogaria', 'pharma', 'farmacia', 'counseling',
-            'cabeleireiro', 'pague menos', 'sephora'
-        ],
-        'Mercado': [
-            'merc', 'grocery', 'market', 'supermarket', 'costco', 'safeway',
-            'walmart', 'home depot', 'dollar tree', 'target', 'trader',
-            'whole foods', 'aldi', 'kroger', 'publix', 'shoprite',
-            'dollar store', 'dollarama', 'haggen',
-            'shoppers', 'sdm', 'drug mart'
-        ],
-        'Telefone': [
-            'telefone', 'phone', 'mobile', 'cellular', 'communication', 'skype'
-        ],
-        'Alimentação': [
-            'alimentação', 'food', 'restaurant', 'cafe', 'dining',
-            'meal', 'coffee', 'bar', 'bakery', 'starbucks',
-            'uber eats', 'pho', 'sushi', 'pizza', 'brewery', 'cuisine',
-            'liquor', 'ramen', 'restaurante', 'lanchonete', 'burger',
-            'breakfast', 'lunch', 'dinner', 'bistro', 'grill', 'eats',
-            'winery', 'wine', 'vineyard', 'kitchen', 'gastronom', 'beer', 'brewing',
-            'ice cream', 'pizzeria', 'gelateria',
-            'boteco', 'cachacaria', 'coxinha', 'chocolat', 'brew',
-            'viet', 'tst', 'hortons', 'keg', 'poke', 'steak', 'bagel'
-        ],
-        'Vestuário': [
-            'vestuário', 'clothing', 'clothes', 'fashion', 'apparel',
-            'outlet', 'shoes'
-        ],
-        'Outro': [
-            'outro', 'miscellaneous', 'various', 'unclassified',
-            'amazon', 'amzn', 'temu', 'apple store', 'ebay', 'etsy',
-            'buy', 'gadget', 'assorted', 'mixed', 'different',
-            'varejopag', 'nagem'
-        ],
-        'Lazer': [
-            'lazer', 'leisure', 'entertainment', 'fun', 'recreation',
-            'hobby', 'netflix', 'spotify', 'primevideo', 'cinema', 'movie',
-            'theater', 'concert', 'show', 'ticket', 'music',
-            'playstation', 'cirque du soleil', 'cineplex', 'obaticket'
-        ],
-        'Transporte': [
-            'transporte', 'transport', 'uber', 'taxi', 'bus',
-            'parking', 'fuel', 'vehicle', 'lyft', 'transit', 'subway',
-            'auto', 'rental', 'maintenance', 'e-bike', 'posto', 'chevron',
-            'impark', 'easypark', 'indigo park', 'zipby', 'driver services', 'chv'
-        ],
-        'Educação': [
-            'educação', 'education', 'school', 'student', 'college',
-            'university', 'tuition', 'workshop', 'seminar', 'textbook',
-            'abebooks', 'curso', 'course', 'training', 'learning'
-        ],
-        'Presente': [
-            'presente', 'gift', 'donation', 'present', 'charity',
-            'nonprofit', 'contribute', 'support', 'fundraiser',
-            'cause', 'organization', 'foundation', 'give', 'donate'
-        ],
-        'Empréstimo': [
-            'empréstimo', 'borrowing', 'student loan'
-        ]
-    },
-    income: {
-        'Trabalho': [
-            'trabalho', 'work', 'salary', 'payroll', 'wage',
-            'income', 'earning', 'job', 'reembolso',
-            'salário', 'contribuição', 'compensation', 'pay',
-            'direct deposit', 'employment', 'career', 'profession',
-            'occupation'
-        ],
-        'Investimento': [
-            'invest', 'investment', 'dividend', 'interest',
-            'capital gain', 'stock', 'bond', 'fund', 'etf',
-            'mutual', 'security', 'portfolio', 'asset', 'equity',
-            'share', 'return'
-        ],
-        'Reembolso': [
-            'temu', 'refund', 'return', 'reimbursement', 'cashback',
-            'rebate', 'credit', 'chargeback', 'adjustment', 'correction',
-            'reversal', 'cheque', 'pix', 'interac'
-        ],
-        'Outro': [
-            'outro', 'other', 'miscellaneous', 'diversos',
-            'additional', 'extra', 'ajuste', 'various', 'diverse',
-            'assorted', 'mixed', 'different', 'payment', 'received',
-            'thank you', 'freelance', 'contract', 'gig', 'project',
-            'client', 'customer', 'service', 'consulting', 'consultation',
-            'advisor', 'coach', 'mentor', 'tutor', 'instructor',
-            'settlement', 'gift', 'present', 'donation', 'contribution',
-            'support', 'assistance', 'aid', 'help', 'benefit', 'grant',
-            'scholarship', 'fellowship', 'stipend', 'allowance'
-        ]
-    }
-};
+// Keywords trimmed and lowercased (descriptions are matched lowercased), with
+// blank and non-string entries dropped.
+const cleanKeywords = list => list
+    .filter(keyword => typeof keyword === 'string')
+    .map(keyword => keyword.trim().toLowerCase())
+    .filter(Boolean);
 
-// Build a merged category-keyword map. If `personalKeywordsPath` is supplied,
-// the module at that path is dynamically imported and its `personalKeywords`
-// export is prepended per category so personal entries win under
-// first-match-wins iteration. A missing/unreadable file is swallowed and the
-// generic map is returned unchanged — fresh clones work with zero config.
+// Loads the keyword map from the module at `keywordsPath` (its `personalKeywords`
+// export). Categories keep the order the file declares them in, which decides
+// first-match-wins ties. A missing file or export means no keywords, so every
+// description comes back Sem Categoria.
 //
-// Paths are resolved relative to this module (the one doing the dynamic
-// import), so callers in `js/` can pass `./personal-keywords.js` and tests
-// under `tests/` can pass `../tests/fixtures/...`.
-export async function loadCategoryKeywords(personalKeywordsPath) {
-    let personalKeywords = { expense: {}, income: {} };
-    if (personalKeywordsPath) {
-        try {
-            const mod = await import(personalKeywordsPath);
-            if (mod.personalKeywords) personalKeywords = mod.personalKeywords;
-        } catch {
-            // personal keywords file not present — use empty overrides
-        }
-    }
+// Paths are resolved relative to `js/`, so callers there can pass
+// `./personal-keywords.js` and tests can pass `../tests/fixtures/...`.
+export async function loadCategoryKeywords(keywordsPath) {
+    const { personalKeywords = {} } = await importKeywordsFile(keywordsPath);
+    const typeMap = categories => Object.fromEntries(
+        Object.entries(categories ?? {}).map(([category, list]) => [category, cleanKeywords(list)])
+    );
 
-    const merged = {};
-    for (const type of Object.keys(genericKeywords)) {
-        merged[type] = {};
-        for (const category of Object.keys(genericKeywords[type])) {
-            const personal = (personalKeywords?.[type]?.[category]) || [];
-            merged[type][category] = [...personal, ...genericKeywords[type][category]];
-        }
-    }
-    return merged;
+    return { expense: typeMap(personalKeywords.expense), income: typeMap(personalKeywords.income) };
 }
 
 /**
- * Narrows a keyword map to the categories the user has, keeping catalog order
+ * Narrows a keyword map to the categories the user has, keeping the map's declared order
  * so first-match-wins precedence is unchanged; a description whose category is
  * missing falls through to the next allowed category.
  * @param {{expense: object, income: object}} categoryKeywords map from loadCategoryKeywords

@@ -10,6 +10,14 @@ describe('static data', () => {
         expect(categoryKeywords).toHaveProperty('expense');
         expect(categoryKeywords).toHaveProperty('income');
     });
+
+    it('loads the tracked stand-in, never the private keywords file', async () => {
+        // Arrange
+        const { personalKeywords } = await import('./fixtures/app-keywords.js');
+
+        // Act, Assert
+        expect(categoryKeywords).toEqual(personalKeywords);
+    });
 });
 
 describe('categorizeTransaction with the Settings category list', () => {
